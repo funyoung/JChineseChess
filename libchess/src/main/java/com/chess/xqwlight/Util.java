@@ -1,4 +1,4 @@
-package com.hzy.chinese.jchess.xqwlight;
+package com.chess.xqwlight;
 
 import java.io.IOException;
 import java.io.InputStream;

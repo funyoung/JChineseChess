@@ -7,8 +7,8 @@ import android.support.annotation.Nullable;
 
 import com.blankj.utilcode.util.ActivityUtils;
 import com.hzy.chinese.jchess.R;
-import com.hzy.chinese.jchess.game.GameConfig;
-import com.hzy.chinese.jchess.xqwlight.Position;
+import com.chess.game.GameConfig;
+import com.chess.xqwlight.Position;
 
 import java.io.InputStream;
 

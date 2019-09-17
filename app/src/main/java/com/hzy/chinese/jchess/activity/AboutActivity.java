@@ -11,24 +11,27 @@ import android.widget.TextView;
 import com.blankj.utilcode.util.AppUtils;
 import com.hzy.chinese.jchess.R;
 
-import butterknife.BindView;
-import butterknife.ButterKnife;
-import butterknife.OnClick;
-
 /**
  * Created by tangbull on 2018/3/27.
  */
 
-public class AboutActivity extends AppCompatActivity {
+public class AboutActivity extends AppCompatActivity implements View.OnClickListener {
+    private static final int[] CLICKABLE_ITEM_IDS = {
+            R.id.version_info_item,
+            R.id.source_code_item,
+            R.id.about_me_item
+    };
 
-    @BindView(R.id.version_name)
-    TextView mVersionName;
+    private TextView mVersionName;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_about);
-        ButterKnife.bind(this);
+
+        mVersionName = findViewById(R.id.version_name);
+        setOnClickListener();
+
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(true);
@@ -51,10 +54,14 @@ public class AboutActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    @OnClick({R.id.version_info_item,
-            R.id.source_code_item,
-            R.id.about_me_item})
-    public void onViewClicked(View view) {
+    private void setOnClickListener() {
+        for (int id : CLICKABLE_ITEM_IDS){
+            findViewById(id).setOnClickListener(this);
+        }
+    }
+
+    @Override
+    public void onClick(View view) {
         switch (view.getId()) {
             case R.id.version_info_item:
                 WebViewActivity.startUrl(this, getString(R.string.github_release_page));

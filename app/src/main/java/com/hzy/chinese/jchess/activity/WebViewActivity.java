@@ -1,9 +1,11 @@
 package com.hzy.chinese.jchess.activity;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.ActionBar;
@@ -13,6 +15,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.webkit.DownloadListener;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -21,9 +24,6 @@ import android.widget.ProgressBar;
 import com.blankj.utilcode.util.NetworkUtils;
 import com.blankj.utilcode.util.StringUtils;
 import com.hzy.chinese.jchess.R;
-
-import butterknife.BindView;
-import butterknife.ButterKnife;
 
 /**
  * Created by tangbull on 2018/3/27.
@@ -39,9 +39,7 @@ public class WebViewActivity extends AppCompatActivity {
         context.startActivity(intent);
     }
 
-    @BindView(R.id.web_view_web)
     WebView mWebViewWeb;
-    @BindView(R.id.web_view_progress)
     ProgressBar mWebViewProgress;
 
     @Override
@@ -50,7 +48,10 @@ public class WebViewActivity extends AppCompatActivity {
         Intent intent = getIntent();
         String mInitUrl = intent.getStringExtra(WEB_VIEW_URL);
         setContentView(R.layout.activity_web_view);
-        ButterKnife.bind(this);
+
+        mWebViewWeb = findViewById(R.id.web_view_web);
+        mWebViewProgress = findViewById(R.id.web_view_progress);
+
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(true);
@@ -85,7 +86,7 @@ public class WebViewActivity extends AppCompatActivity {
         webSettings.setDatabaseEnabled(true);
         webSettings.setAppCacheEnabled(true);
         if (NetworkUtils.isConnected()) {
-            webSettings.setCacheMode(WebSettings.LOAD_NORMAL);
+            webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
         } else {
             webSettings.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
         }
@@ -105,13 +106,33 @@ public class WebViewActivity extends AppCompatActivity {
 
     private WebViewClient getWebViewClient() {
         return new WebViewClient() {
+            @SuppressWarnings("deprecation")
             @Override
+            @Deprecated
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (handleUri(view, url)) {
+                    return true;
+                }
+
+                return super.shouldOverrideUrlLoading(view, url);
+            }
+
+            private boolean handleUri(WebView view, final String url) {
                 if (url.startsWith("http")) {
                     view.loadUrl(url);
                     return true;
                 }
-                return super.shouldOverrideUrlLoading(view, url);
+                return false;
+            }
+
+            @TargetApi(Build.VERSION_CODES.N)
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                if (handleUri(view, request.getUrl().toString())) {
+                    return true;
+                }
+
+                return super.shouldOverrideUrlLoading(view, request);
             }
         };
     }
@@ -150,6 +171,8 @@ public class WebViewActivity extends AppCompatActivity {
             case R.id.menu_refresh:
                 mWebViewWeb.reload();
                 return true;
+            default:
+                break;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -157,15 +180,17 @@ public class WebViewActivity extends AppCompatActivity {
     @Override
     public void onPause() {
         super.onPause();
-        if (mWebViewWeb != null)
+        if (mWebViewWeb != null) {
             mWebViewWeb.onPause();
+        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (mWebViewWeb != null)
+        if (mWebViewWeb != null) {
             mWebViewWeb.onResume();
+        }
     }
 
     @Override

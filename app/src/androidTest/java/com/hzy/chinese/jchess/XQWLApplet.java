@@ -21,9 +21,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 package xqwlight;
 
-import com.hzy.chinese.jchess.xqwlight.Position;
-import com.hzy.chinese.jchess.xqwlight.Search;
-import com.hzy.chinese.jchess.xqwlight.Util;
+import com.chess.xqwlight.Position;
+import com.chess.xqwlight.Search;
+import com.chess.xqwlight.Util;
 
 import java.applet.Applet;
 import java.applet.AudioClip;

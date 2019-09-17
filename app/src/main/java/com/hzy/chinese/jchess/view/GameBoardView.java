@@ -11,28 +11,38 @@ import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.chess.game.IMsgProvider;
 import com.hzy.chinese.jchess.R;
-import com.hzy.chinese.jchess.game.GameConfig;
-import com.hzy.chinese.jchess.game.GameLogic;
-import com.hzy.chinese.jchess.game.IGameView;
-import com.hzy.chinese.jchess.xqwlight.Position;
+import com.chess.game.GameLogic;
+import com.chess.game.IGameView;
+import com.chess.xqwlight.Position;
 
 /**
  * Created by HZY on 2018/3/8.
  */
 
 public class GameBoardView extends View implements IGameView {
+    private static final int[] PIECE_RES_WOOD = {
+            R.drawable.rk, R.drawable.ra, R.drawable.rb,
+            R.drawable.rn, R.drawable.rr, R.drawable.rc,
+            R.drawable.rp, R.drawable.bk, R.drawable.ba,
+            R.drawable.bb, R.drawable.bn, R.drawable.br,
+            R.drawable.bc, R.drawable.bp, R.drawable.selected
+    };
 
+    private static final int[] PIECE_RES_CARTOON = {
+            R.drawable.rk2, R.drawable.ra2, R.drawable.rb2,
+            R.drawable.rn2, R.drawable.rr2, R.drawable.rc2,
+            R.drawable.rp2, R.drawable.bk2, R.drawable.ba2,
+            R.drawable.bb2, R.drawable.bn2, R.drawable.br2,
+            R.drawable.bc2, R.drawable.bp2, R.drawable.selected2
+    };
 
-    private static final int WIDTH_CELL_COUNT = 9;
-    private static final int HEIGHT_CELL_COUNT = 10;
-    private int mPieceTheme = GameConfig.PIECE_THEME_CARTOON;
-
-    private float mCellWidth;
     private Bitmap[] mPiecesBitmap;
     private Canvas mCanvas;
-    private GameLogic mGameLogic;
     private RectF mPieceDstRectF;
+
+    private final GameLogic mGameLogic;
 
     public GameBoardView(Context context) {
         this(context, null);
@@ -44,23 +54,22 @@ public class GameBoardView extends View implements IGameView {
 
     public GameBoardView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        loadAttributeSet(context, attrs);
-        initView();
+        mGameLogic = new GameLogic(this, provider);
+
+        mPieceDstRectF = new RectF();
+        setBackgroundResource(R.drawable.board);
+
+        int theme = loadThemeFromAttributeSet(context, attrs);
+        setPieceTheme(theme);
     }
 
-    private void loadAttributeSet(Context context, AttributeSet attrs) {
+    private int loadThemeFromAttributeSet(Context context, AttributeSet attrs) {
         TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.GameBoardView);
         TypedValue outValue = new TypedValue();
         ta.getValue(R.styleable.GameBoardView_pieceTheme, outValue);
-        mPieceTheme = outValue.data;
+        int theme = outValue.data;
         ta.recycle();
-    }
-
-    private void initView() {
-        mGameLogic = new GameLogic(this);
-        mPieceDstRectF = new RectF();
-        setBackgroundResource(R.drawable.board);
-        loadBitmapResources();
+        return theme;
     }
 
     public GameLogic getGameLogic() {
@@ -68,17 +77,13 @@ public class GameBoardView extends View implements IGameView {
     }
 
     public void setPieceTheme(int theme) {
-        if (theme == mPieceTheme)
-            return;
-        mPieceTheme = theme;
-        loadBitmapResources();
+        mGameLogic.setPieceTheme(theme);
     }
 
-    private void loadBitmapResources() {
-        int[] pieceResArray = GameConfig.PIECE_RES_CARTOON;
-        if (mPieceTheme == GameConfig.PIECE_THEME_WOOD) {
-            pieceResArray = GameConfig.PIECE_RES_WOOD;
-        }
+    @Override
+    public void onThemeChanged(boolean woodTheme) {
+        int[] pieceResArray = woodTheme ? PIECE_RES_WOOD : PIECE_RES_CARTOON;
+
         mPiecesBitmap = new Bitmap[pieceResArray.length];
         for (int i = 0; i < pieceResArray.length; i++) {
             if (mPiecesBitmap[i] != null && !mPiecesBitmap[i].isRecycled()) {
@@ -92,22 +97,18 @@ public class GameBoardView extends View implements IGameView {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int widthSize = MeasureSpec.getSize(widthMeasureSpec);
         int heightSize = MeasureSpec.getSize(heightMeasureSpec);
-        float widthCell = widthSize * 1.0f / WIDTH_CELL_COUNT;
-        float heightCell = heightSize * 1.0f / HEIGHT_CELL_COUNT;
-        float cellWidth;
-        if (widthCell < 0.1f || heightCell < 0.1f) {
-            cellWidth = Math.max(widthCell, heightCell);
-        } else {
-            cellWidth = Math.min(widthCell, heightCell);
-        }
-        setMeasuredDimension((int) (cellWidth * WIDTH_CELL_COUNT),
-                (int) (cellWidth * HEIGHT_CELL_COUNT));
+        mGameLogic.onMeasure(widthSize, heightSize);
+    }
+
+    @Override
+    public void onViewMeasured(int w, int h) {
+        setMeasuredDimension(w, h);
     }
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        mCellWidth = w * 1.0f / WIDTH_CELL_COUNT;
+        mGameLogic.onSizeChanged(w, h);
     }
 
     @Override
@@ -119,12 +120,9 @@ public class GameBoardView extends View implements IGameView {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_UP) {
-            int xx = (int) (event.getX() / mCellWidth);
-            int yy = (int) (event.getY() / mCellWidth);
-            int sq = Position.COORD_XY(xx + Position.FILE_LEFT, yy + Position.RANK_TOP);
-            mGameLogic.clickSquare(sq);
-            return true;
+            mGameLogic.clickSquare(event.getX(), event.getY());
         }
+
         return true;
     }
 
@@ -134,26 +132,34 @@ public class GameBoardView extends View implements IGameView {
     }
 
     @Override
-    public void drawPiece(int pc, int xx, int yy) {
+    public void drawPiece(int pc, float left, float top, float right, float bottom) {
         if (mCanvas != null) {
-            float x = xx * mCellWidth;
-            float y = yy * mCellWidth;
-            pc -= 8;
-            if (pc > 6) {
-                pc--;
-            }
-            mPieceDstRectF.set(x, y, x + mCellWidth, y + mCellWidth);
+            mPieceDstRectF.set(left, top, right, bottom);
             mCanvas.drawBitmap(mPiecesBitmap[pc], null, mPieceDstRectF, null);
         }
     }
 
-    @Override
-    public void drawSelected(int xx, int yy) {
-        if (mCanvas != null) {
-            float x = xx * mCellWidth;
-            float y = yy * mCellWidth;
-            mPieceDstRectF.set(x, y, x + mCellWidth, y + mCellWidth);
-            mCanvas.drawBitmap(mPiecesBitmap[14], null, mPieceDstRectF, null);
+    private static final IMsgProvider provider = new IMsgProvider() {
+        @Override
+        public int getFinalMessage(boolean win) {
+            return win ? R.string.congratulations_you_win : R.string.you_lose_and_try_again;
         }
-    }
+
+        @Override
+        public int getLongTimeMessage(int vlRep) {
+            return vlRep > Position.WIN_VALUE ?
+                    R.string.play_too_long_as_lose : vlRep < -Position.WIN_VALUE ?
+                    R.string.pc_play_too_long_as_lose : R.string.standoff_as_draw;
+        }
+
+        @Override
+        public int getDrawMessage() {
+            return R.string.both_too_long_as_draw;
+        }
+
+        @Override
+        public int getLastHistoryMessage() {
+            return R.string.no_more_histories;
+        }
+    };
 }

@@ -1,29 +1,26 @@
-package com.hzy.chinese.jchess.game;
+package com.chess.game;
 
-import android.support.annotation.NonNull;
-
-import com.hzy.chinese.jchess.R;
-import com.hzy.chinese.jchess.xqwlight.Position;
-import com.hzy.chinese.jchess.xqwlight.Search;
-
+import com.chess.xqwlight.Position;
+import com.chess.xqwlight.Search;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-import static com.hzy.chinese.jchess.game.GameConfig.RESP_CAPTURE;
-import static com.hzy.chinese.jchess.game.GameConfig.RESP_CAPTURE2;
-import static com.hzy.chinese.jchess.game.GameConfig.RESP_CHECK;
-import static com.hzy.chinese.jchess.game.GameConfig.RESP_CHECK2;
-import static com.hzy.chinese.jchess.game.GameConfig.RESP_CLICK;
-import static com.hzy.chinese.jchess.game.GameConfig.RESP_DRAW;
-import static com.hzy.chinese.jchess.game.GameConfig.RESP_ILLEGAL;
-import static com.hzy.chinese.jchess.game.GameConfig.RESP_LOSS;
-import static com.hzy.chinese.jchess.game.GameConfig.RESP_MOVE;
-import static com.hzy.chinese.jchess.game.GameConfig.RESP_MOVE2;
-import static com.hzy.chinese.jchess.game.GameConfig.RESP_WIN;
+import static com.chess.game.GameConfig.RESP_CAPTURE;
+import static com.chess.game.GameConfig.RESP_CAPTURE2;
+import static com.chess.game.GameConfig.RESP_CHECK;
+import static com.chess.game.GameConfig.RESP_CHECK2;
+import static com.chess.game.GameConfig.RESP_CLICK;
+import static com.chess.game.GameConfig.RESP_DRAW;
+import static com.chess.game.GameConfig.RESP_ILLEGAL;
+import static com.chess.game.GameConfig.RESP_LOSS;
+import static com.chess.game.GameConfig.RESP_MOVE;
+import static com.chess.game.GameConfig.RESP_MOVE2;
+import static com.chess.game.GameConfig.RESP_WIN;
 
 public class GameLogic {
+    private final IMsgProvider msgProvider;
+    private final IGameView mGameView;
 
-    private IGameView mGameView;
     private String currentFen;
     private int sqSelected, mvLast;
     private volatile boolean thinking = false;
@@ -35,13 +32,14 @@ public class GameLogic {
     private IGameCallback mGameCallback;
     private volatile boolean mDrawBoardFinish;
 
-    public GameLogic(IGameView gameView) {
-        this(gameView, null);
+    public GameLogic(IGameView gameView, IMsgProvider provider) {
+        this(gameView, provider, null);
     }
 
-    public GameLogic(@NonNull IGameView gameView, IGameCallback callback) {
-        mGameCallback = callback;
+    public GameLogic(IGameView gameView, IMsgProvider provider, IGameCallback callback) {
         mGameView = gameView;
+        msgProvider = provider;
+        mGameCallback = callback;
     }
 
     public void setLevel(int level) {
@@ -61,11 +59,25 @@ public class GameLogic {
                 int yy = y - Position.RANK_TOP;
                 int pc = pos.squares[sq];
                 if (pc > 0) {
-                    mGameView.drawPiece(pc, xx, yy);
+
+                    float left = xx * mCellWidth;
+                    float top = yy * mCellWidth;
+                    float right = left + mCellWidth;
+                    float bottom = top + mCellWidth;
+                    pc -= 8;
+                    if (pc > PIECE_BITMAP_START_INDEX) {
+                        pc--;
+                    }
+
+                    mGameView.drawPiece(pc, left, top, right, bottom);
                 }
                 if (sq == sqSelected || sq == Position.SRC(mvLast) ||
                         sq == Position.DST(mvLast)) {
-                    mGameView.drawSelected(xx, yy);
+                    float left = xx * mCellWidth;
+                    float top = yy * mCellWidth;
+                    float right = left + mCellWidth;
+                    float bottom = top + mCellWidth;
+                    mGameView.drawPiece(PIECE_BITMAP_SELECTED_INDEX, left, top, right, bottom);
                 }
             }
         }
@@ -135,10 +147,14 @@ public class GameLogic {
         }
     }
 
-    public void clickSquare(int sq_) {
+    public void clickSquare(float x, float y) {
         if (thinking) {
             return;
         }
+
+        int xx = (int) (x / mCellWidth);
+        int yy = (int) (y / mCellWidth);
+        int sq_ = Position.COORD_XY(xx + Position.FILE_LEFT, yy + Position.RANK_TOP);
         int sq = (flipped ? Position.SQUARE_FLIP(sq_) : sq_);
         int pc = pos.squares[sq];
         if ((pc & Position.SIDE_TAG(pos.sdPlayer)) != 0) {
@@ -241,8 +257,7 @@ public class GameLogic {
     private boolean getResult(int response) {
         if (pos.isMate()) {
             playSound(response < 0 ? RESP_WIN : RESP_LOSS);
-            showMessage(response < 0 ?
-                    R.string.congratulations_you_win : R.string.you_lose_and_try_again);
+            showMessage(msgProvider.getFinalMessage(response < MAX_WIN_RESPONSE_VALUE));
             return true;
         }
         int vlRep = pos.repStatus(3);
@@ -250,14 +265,12 @@ public class GameLogic {
             vlRep = (response < 0 ? pos.repValue(vlRep) : -pos.repValue(vlRep));
             playSound(vlRep > Position.WIN_VALUE ? RESP_LOSS :
                     vlRep < -Position.WIN_VALUE ? RESP_WIN : RESP_DRAW);
-            showMessage(vlRep > Position.WIN_VALUE ?
-                    R.string.play_too_long_as_lose : vlRep < -Position.WIN_VALUE ?
-                    R.string.pc_play_too_long_as_lose : R.string.standoff_as_draw);
+            showMessage(msgProvider.getLongTimeMessage(vlRep));
             return true;
         }
         if (pos.moveNum > 100) {
             playSound(RESP_DRAW);
-            showMessage(R.string.both_too_long_as_draw);
+            showMessage(msgProvider.getDrawMessage());
             return true;
         }
         if (response >= 0) {
@@ -277,11 +290,46 @@ public class GameLogic {
 
     private String popHistory() {
         if (mHistoryList.size() == 0) {
-            showMessage(R.string.no_more_histories);
+            showMessage(msgProvider.getLastHistoryMessage());
             playSound(RESP_ILLEGAL);
             return null;
         }
         playSound(RESP_MOVE2);
         return mHistoryList.pollLast();
     }
+
+    private int mPieceTheme = GameConfig.PIECE_THEME_UNKNOWN;
+    public void setPieceTheme(int theme) {
+        if (theme == mPieceTheme) {
+            return;
+        }
+        mPieceTheme = theme;
+
+        mGameView.onThemeChanged(mPieceTheme == GameConfig.PIECE_THEME_WOOD);
+    }
+
+    private static final int WIDTH_CELL_COUNT = 9;
+    private static final int HEIGHT_CELL_COUNT = 10;
+    public void onMeasure(int widthSize, int heightSize) {
+        float widthCell = widthSize * 1.0f / WIDTH_CELL_COUNT;
+        float heightCell = heightSize * 1.0f / HEIGHT_CELL_COUNT;
+        float cellWidth;
+        if (widthCell < 0.1f || heightCell < 0.1f) {
+            cellWidth = Math.max(widthCell, heightCell);
+        } else {
+            cellWidth = Math.min(widthCell, heightCell);
+        }
+
+        mGameView.onViewMeasured((int) (cellWidth * WIDTH_CELL_COUNT),
+                (int) (cellWidth * HEIGHT_CELL_COUNT));
+    }
+
+    private float mCellWidth;
+    public void onSizeChanged(int w, int h) {
+        mCellWidth = Math.min(w, h) * 1.0f / WIDTH_CELL_COUNT;
+    }
+
+    private static final int PIECE_BITMAP_SELECTED_INDEX = 14;
+    private static final int PIECE_BITMAP_START_INDEX = 6;
+    private static final int MAX_WIN_RESPONSE_VALUE = 0;
 }
