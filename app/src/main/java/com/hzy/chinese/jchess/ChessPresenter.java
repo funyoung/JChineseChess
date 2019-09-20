@@ -12,11 +12,13 @@ import com.blankj.utilcode.util.StringUtils;
 import com.chess.game.GameConfig;
 import com.chess.game.GameLogic;
 import com.chess.game.IGameCallback;
+import com.chess.game.IMsgProvider;
+import com.chess.xqwlight.Position;
 import com.hzy.chinese.jchess.view.GameBoardView;
 
 import java.util.LinkedList;
 
-public class ChessPresenter implements IGameCallback {
+public class ChessPresenter extends GameLogic implements IGameCallback {
     private static final int[] SOUND_RES_ARRAY = {
             R.raw.click, R.raw.illegal, R.raw.move,
             R.raw.move2, R.raw.capture, R.raw.capture2,
@@ -29,7 +31,6 @@ public class ChessPresenter implements IGameCallback {
 
     private SoundPool mSoundPool;
     private LinkedList<Integer> mSoundList;
-    private GameLogic mGameLogic;
     private final SharedPreferences mPreference;
     private boolean mSoundEnable;
     private int mHandicapIndex;
@@ -40,10 +41,14 @@ public class ChessPresenter implements IGameCallback {
     private final Context context;
 
     public ChessPresenter(Context context, GameBoardView mGameBoard, ProgressBar mGameProgress, SharedPreferences mPreference) {
+        super(mGameBoard, provider);
+
         this.context = context;
         this.mGameBoard = mGameBoard;
         this.mGameProgress = mGameProgress;
         this.mPreference = mPreference;
+
+        mGameBoard.attachPresenter(this);
 
         loadDefaultConfig();
         initSoundPool();
@@ -76,17 +81,16 @@ public class ChessPresenter implements IGameCallback {
     }
 
     private void initGameLogic() {
-        mGameLogic = mGameBoard.getGameLogic();
-        mGameLogic.setCallback(this);
-        mGameLogic.setLevel(aiLevel);
-        mGameBoard.setPieceTheme(mPieceStyle);
+        setCallback(this);
+        setLevel(aiLevel);
+        setPieceTheme(mPieceStyle);
         // load last saved game
         String lastFen = mPreference.getString(GameConfig.PREF_LAST_FEN, "");
         if (StringUtils.isEmpty(lastFen)) {
-            mGameLogic.restart(mComputerFlip, mHandicapIndex);
+            restart(mComputerFlip, mHandicapIndex);
         } else {
             showMessage(getString(R.string.load_last_game_finish));
-            mGameLogic.restart(mComputerFlip, lastFen);
+            restart(mComputerFlip, lastFen);
         }
     }
 
@@ -95,19 +99,21 @@ public class ChessPresenter implements IGameCallback {
                 .setMessage(message).show();
     }
 
+    @Override
     public void retract() {
-        mGameLogic.retract();
+        super.retract();
     }
 
+    @Override
     public void restart() {
-        mGameLogic.restart(mComputerFlip, mHandicapIndex);
+        super.restart(mComputerFlip, mHandicapIndex);
         showMessage(getString(R.string.new_game_started));
     }
 
     public void onResume() {
         loadDefaultConfig();
-        mGameLogic.setLevel(aiLevel);
-        mGameBoard.setPieceTheme(mPieceStyle);
+        setLevel(aiLevel);
+        setPieceTheme(mPieceStyle);
         mGameBoard.invalidate();
     }
 
@@ -115,7 +121,7 @@ public class ChessPresenter implements IGameCallback {
         if (mSoundPool != null) {
             mSoundPool.release();
         }
-        mPreference.edit().putString(GameConfig.PREF_LAST_FEN, mGameLogic.getCurrentFen()).apply();
+        mPreference.edit().putString(GameConfig.PREF_LAST_FEN, getCurrentFen()).apply();
     }
 
     @Override
@@ -149,4 +155,33 @@ public class ChessPresenter implements IGameCallback {
     private void runOnUiThread(Runnable runnable) {
         mGameBoard.post(runnable);
     }
+
+    @Override
+    public void setPieceTheme(int theme) {
+        super.setPieceTheme(theme);
+    }
+
+    private static final IMsgProvider provider = new IMsgProvider() {
+        @Override
+        public int getFinalMessage(boolean win) {
+            return win ? R.string.congratulations_you_win : R.string.you_lose_and_try_again;
+        }
+
+        @Override
+        public int getLongTimeMessage(int vlRep) {
+            return vlRep > Position.WIN_VALUE ?
+                    R.string.play_too_long_as_lose : vlRep < -Position.WIN_VALUE ?
+                    R.string.pc_play_too_long_as_lose : R.string.standoff_as_draw;
+        }
+
+        @Override
+        public int getDrawMessage() {
+            return R.string.both_too_long_as_draw;
+        }
+
+        @Override
+        public int getLastHistoryMessage() {
+            return R.string.no_more_histories;
+        }
+    };
 }

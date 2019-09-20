@@ -11,11 +11,10 @@ import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
 
-import com.chess.game.IMsgProvider;
-import com.hzy.chinese.jchess.R;
-import com.chess.game.GameLogic;
+import com.chess.game.GameConfig;
 import com.chess.game.IGameView;
-import com.chess.xqwlight.Position;
+import com.hzy.chinese.jchess.ChessPresenter;
+import com.hzy.chinese.jchess.R;
 
 /**
  * Created by HZY on 2018/3/8.
@@ -42,8 +41,9 @@ public class GameBoardView extends View implements IGameView {
     private Canvas mCanvas;
     private RectF mPieceDstRectF;
 
-    private final GameLogic mGameLogic;
+    private ChessPresenter presenter;
 
+    private final AttributeSet attrs;
     public GameBoardView(Context context) {
         this(context, null);
     }
@@ -52,15 +52,19 @@ public class GameBoardView extends View implements IGameView {
         this(context, attrs, 0);
     }
 
+    public void attachPresenter(ChessPresenter presenter) {
+        this.presenter = presenter;
+
+        int loadingTheme = loadThemeFromAttributeSet(getContext(), attrs);
+        this.presenter.setPieceTheme(loadingTheme);
+    }
+
     public GameBoardView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        mGameLogic = new GameLogic(this, provider);
+        this.attrs = attrs;
 
         mPieceDstRectF = new RectF();
         setBackgroundResource(R.drawable.board);
-
-        int theme = loadThemeFromAttributeSet(context, attrs);
-        setPieceTheme(theme);
     }
 
     private int loadThemeFromAttributeSet(Context context, AttributeSet attrs) {
@@ -70,14 +74,6 @@ public class GameBoardView extends View implements IGameView {
         int theme = outValue.data;
         ta.recycle();
         return theme;
-    }
-
-    public GameLogic getGameLogic() {
-        return mGameLogic;
-    }
-
-    public void setPieceTheme(int theme) {
-        mGameLogic.setPieceTheme(theme);
     }
 
     @Override
@@ -97,7 +93,7 @@ public class GameBoardView extends View implements IGameView {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int widthSize = MeasureSpec.getSize(widthMeasureSpec);
         int heightSize = MeasureSpec.getSize(heightMeasureSpec);
-        mGameLogic.onMeasure(widthSize, heightSize);
+        presenter.onMeasure(widthSize, heightSize);
     }
 
     @Override
@@ -108,19 +104,19 @@ public class GameBoardView extends View implements IGameView {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        mGameLogic.onSizeChanged(w, h);
+        presenter.onSizeChanged(w, h);
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         this.mCanvas = canvas;
-        mGameLogic.drawGameBoard();
+        presenter.drawGameBoard();
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_UP) {
-            mGameLogic.clickSquare(event.getX(), event.getY());
+            presenter.clickSquare(event.getX(), event.getY());
         }
 
         return true;
@@ -138,28 +134,4 @@ public class GameBoardView extends View implements IGameView {
             mCanvas.drawBitmap(mPiecesBitmap[pc], null, mPieceDstRectF, null);
         }
     }
-
-    private static final IMsgProvider provider = new IMsgProvider() {
-        @Override
-        public int getFinalMessage(boolean win) {
-            return win ? R.string.congratulations_you_win : R.string.you_lose_and_try_again;
-        }
-
-        @Override
-        public int getLongTimeMessage(int vlRep) {
-            return vlRep > Position.WIN_VALUE ?
-                    R.string.play_too_long_as_lose : vlRep < -Position.WIN_VALUE ?
-                    R.string.pc_play_too_long_as_lose : R.string.standoff_as_draw;
-        }
-
-        @Override
-        public int getDrawMessage() {
-            return R.string.both_too_long_as_draw;
-        }
-
-        @Override
-        public int getLastHistoryMessage() {
-            return R.string.no_more_histories;
-        }
-    };
 }
