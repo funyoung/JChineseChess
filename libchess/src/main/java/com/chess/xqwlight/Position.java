@@ -27,6 +27,7 @@ import com.chess.data.Fort;
 import com.chess.data.LegalSpan;
 import com.chess.data.PieceValue;
 import com.chess.data.Pin;
+import com.chess.data.Square;
 
 import java.io.InputStream;
 import java.util.Random;
@@ -63,18 +64,13 @@ public class Position {
 	private final Pin pin = new Pin();
 	private final PieceValue pieceValue = new PieceValue();
 
+	private final Square square = new Square();
+
 	public static final int[] KING_DELTA = {-16, -1, 1, 16};
 	public static final int[] ADVISOR_DELTA = {-17, -15, 15, 17};
 	public static final int[][] KNIGHT_DELTA = {{-33, -31}, {-18, 14}, {-14, 18}, {31, 33}};
 	public static final int[][] KNIGHT_CHECK_DELTA = {{-33, -18}, {-31, -14}, {14, 31}, {18, 33}};
 	public static final int[] MVV_VALUE = {50, 10, 10, 30, 40, 30, 20, 0};
-
-	public static final String[] STARTUP_FEN = {
-		"rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1",	//不让子
-		"rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/R1BAKABNR w - - 0 1",	//让左马
-		"rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/R1BAKAB1R w - - 0 1",	//让双马
-		"rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/9/1C5C1/9/RN2K2NR w - - 0 1",	//让九子
-	};
 
 	public static int RANK_Y(int sq) {
 		return sq >> 4;
@@ -234,8 +230,6 @@ public class Position {
     }
 
 	public int sdPlayer;
-	public byte[] squares = new byte[256];
-
 	public int zobristKey;
 	public int zobristLock;
 	public int vlWhite, vlBlack;
@@ -248,9 +242,7 @@ public class Position {
 
 	public void clearBoard() {
 		sdPlayer = 0;
-		for (int sq = 0; sq < 256; sq ++) {
-			squares[sq] = 0;
-		}
+		square.clear();
 		zobristKey = zobristLock = 0;
 		vlWhite = vlBlack = 0;
 	}
@@ -264,7 +256,12 @@ public class Position {
 
 	public void addPiece(int sq, int pc, boolean del) {
 		int pcAdjust;
-		squares[sq] = (byte) (del ? 0 : pc);
+		if (del) {
+		    square.clear(sq);
+        } else {
+		    square.set(sq, pc);
+        }
+
 		if (pc < 16) {
 			pcAdjust = pc - 8;
 			vlWhite += pieceValue.getValue(pcAdjust, sq, del);
@@ -288,11 +285,11 @@ public class Position {
 	public void movePiece() {
 		int sqSrc = SRC(mvList[moveNum]);
 		int sqDst = DST(mvList[moveNum]);
-		pcList[moveNum] = squares[sqDst];
+		pcList[moveNum] = getPc(sqDst);
 		if (pcList[moveNum] > 0) {
 			delPiece(sqDst, pcList[moveNum]);
 		}
-		int pc = squares[sqSrc];
+		int pc = getPc(sqSrc);
 		delPiece(sqSrc, pc);
 		addPiece(sqDst, pc);
 	}
@@ -300,7 +297,7 @@ public class Position {
 	public void undoMovePiece() {
 		int sqSrc = SRC(mvList[moveNum]);
 		int sqDst = DST(mvList[moveNum]);
-		int pc = squares[sqDst];
+		int pc = getPc(sqDst);
 		delPiece(sqDst, pc);
 		addPiece(sqSrc, pc);
 		if (pcList[moveNum] > 0) {
@@ -410,7 +407,7 @@ public class Position {
 		for (int y = RANK_TOP; y <= RANK_BOTTOM; y ++) {
 			int k = 0;
 			for (int x = FILE_LEFT; x <= FILE_RIGHT; x ++) {
-				int pc = squares[COORD_XY(x, y)];
+				int pc = getPc(COORD_XY(x, y));
 				if (pc > 0) {
 					if (k > 0) {
 						fen.append((char) ('0' + k));
@@ -440,7 +437,7 @@ public class Position {
 		int pcSelfSide = SIDE_TAG(sdPlayer);
 		int pcOppSide = OPP_SIDE_TAG(sdPlayer);
 		for (int sqSrc = 0; sqSrc < 256; sqSrc ++) {
-			int pcSrc = squares[sqSrc];
+			int pcSrc = getPc(sqSrc);
 			if ((pcSrc & pcSelfSide) == 0) {
 				continue;
 			}
@@ -451,7 +448,7 @@ public class Position {
 					if (!fort.contains(sqDst)) {
 						continue;
 					}
-					int pcDst = squares[sqDst];
+					int pcDst = getPc(sqDst);
 					if (vls == null) {
 						if ((pcDst & pcSelfSide) == 0) {
 							mvs[moves] = MOVE(sqSrc, sqDst);
@@ -470,7 +467,7 @@ public class Position {
 					if (!fort.contains(sqDst)) {
 						continue;
 					}
-					int pcDst = squares[sqDst];
+					int pcDst = getPc(sqDst);
 					if (vls == null) {
 						if ((pcDst & pcSelfSide) == 0) {
 							mvs[moves] = MOVE(sqSrc, sqDst);
@@ -486,11 +483,11 @@ public class Position {
 			case PIECE_BISHOP:
 				for (int i = 0; i < 4; i ++) {
 					int sqDst = sqSrc + ADVISOR_DELTA[i];
-					if (!(board.contains(sqDst) && HOME_HALF(sqDst, sdPlayer) && squares[sqDst] == 0)) {
+					if (!(board.contains(sqDst) && HOME_HALF(sqDst, sdPlayer) && square.isEmpty(sqDst))) {
 						continue;
 					}
 					sqDst += ADVISOR_DELTA[i];
-					int pcDst = squares[sqDst];
+					int pcDst = getPc(sqDst);
 					if (vls == null) {
 						if ((pcDst & pcSelfSide) == 0) {
 							mvs[moves] = MOVE(sqSrc, sqDst);
@@ -506,7 +503,7 @@ public class Position {
 			case PIECE_KNIGHT:
 				for (int i = 0; i < 4; i ++) {
 					int sqDst = sqSrc + KING_DELTA[i];
-					if (squares[sqDst] > 0) {
+					if (getPc(sqDst) > 0) {
 						continue;
 					}
 					for (int j = 0; j < 2; j ++) {
@@ -514,7 +511,7 @@ public class Position {
 						if (!board.contains(sqDst)) {
 							continue;
 						}
-						int pcDst = squares[sqDst];
+						int pcDst = getPc(sqDst);
 						if (vls == null) {
 							if ((pcDst & pcSelfSide) == 0) {
 								mvs[moves] = MOVE(sqSrc, sqDst);
@@ -533,7 +530,7 @@ public class Position {
 					int delta = KING_DELTA[i];
 					int sqDst = sqSrc + delta;
 					while (board.contains(sqDst)) {
-						int pcDst = squares[sqDst];
+						int pcDst = getPc(sqDst);
 						if (pcDst == 0) {
 							if (vls == null) {
 								mvs[moves] = MOVE(sqSrc, sqDst);
@@ -558,8 +555,7 @@ public class Position {
 					int delta = KING_DELTA[i];
 					int sqDst = sqSrc + delta;
 					while (board.contains(sqDst)) {
-						int pcDst = squares[sqDst];
-						if (pcDst == 0) {
+						if (square.isEmpty(sqDst)) {
 							if (vls == null) {
 								mvs[moves] = MOVE(sqSrc, sqDst);
 								moves ++;
@@ -571,7 +567,7 @@ public class Position {
 					}
 					sqDst += delta;
 					while (board.contains(sqDst)) {
-						int pcDst = squares[sqDst];
+						int pcDst = getPc(sqDst);
 						if (pcDst > 0) {
 							if ((pcDst & pcOppSide) != 0) {
 								mvs[moves] = MOVE(sqSrc, sqDst);
@@ -589,7 +585,7 @@ public class Position {
 			case PIECE_PAWN:
 				int sqDst = SQUARE_FORWARD(sqSrc, sdPlayer);
 				if (board.contains(sqDst)) {
-					int pcDst = squares[sqDst];
+					int pcDst = getPc(sqDst);
 					if (vls == null) {
 						if ((pcDst & pcSelfSide) == 0) {
 							mvs[moves] = MOVE(sqSrc, sqDst);
@@ -605,7 +601,7 @@ public class Position {
 					for (int delta = -1; delta <= 1; delta += 2) {
 						sqDst = sqSrc + delta;
 						if (board.contains(sqDst)) {
-							int pcDst = squares[sqDst];
+							int pcDst = getPc(sqDst);
 							if (vls == null) {
 								if ((pcDst & pcSelfSide) == 0) {
 									mvs[moves] = MOVE(sqSrc, sqDst);
@@ -627,14 +623,14 @@ public class Position {
 
 	public boolean legalMove(int mv) {
 		int sqSrc = SRC(mv);
-		int pcSrc = squares[sqSrc];
+		int pcSrc = getPc(sqSrc);
 		int pcSelfSide = SIDE_TAG(sdPlayer);
 		if ((pcSrc & pcSelfSide) == 0) {
 			return false;
 		}
 
 		int sqDst = DST(mv);
-		int pcDst = squares[sqDst];
+		int pcDst = getPc(sqDst);
 		if ((pcDst & pcSelfSide) != 0) {
 			return false;
 		}
@@ -646,10 +642,10 @@ public class Position {
 			return fort.contains(sqDst) && legalSpan.isAdviserSpan(sqSrc, sqDst);
 		case PIECE_BISHOP:
 			return SAME_HALF(sqSrc, sqDst) && legalSpan.isBishopSpan(sqSrc, sqDst) &&
-					squares[pin.getBishopPin(sqSrc, sqDst)] == 0;
+					square.isEmpty(pin.getBishopPin(sqSrc, sqDst));
 		case PIECE_KNIGHT:
 			int sqPin = pin.getKnightPin(sqSrc, sqDst);
-			return sqPin != sqSrc && squares[sqPin] == 0;
+			return sqPin != sqSrc && square.isEmpty(sqPin);
 		case PIECE_ROOK:
 		case PIECE_CANNON:
 			int delta;
@@ -661,7 +657,7 @@ public class Position {
 				return false;
 			}
 			sqPin = sqSrc + delta;
-			while (sqPin != sqDst && squares[sqPin] == 0) {
+			while (sqPin != sqDst && square.isEmpty(sqPin)) {
 				sqPin += delta;
 			}
 			if (sqPin == sqDst) {
@@ -671,7 +667,7 @@ public class Position {
 				return false;
 			}
 			sqPin += delta;
-			while (sqPin != sqDst && squares[sqPin] == 0) {
+			while (sqPin != sqDst && square.isEmpty(sqPin)) {
 				sqPin += delta;
 			}
 			return sqPin == sqDst;
@@ -689,23 +685,23 @@ public class Position {
 		int pcSelfSide = SIDE_TAG(sdPlayer);
 		int pcOppSide = OPP_SIDE_TAG(sdPlayer);
 		for (int sqSrc = 0; sqSrc < 256; sqSrc ++) {
-			if (squares[sqSrc] != pcSelfSide + PIECE_KING) {
+			if (getPc(sqSrc) != pcSelfSide + PIECE_KING) {
 				continue;
 			}
-			if (squares[SQUARE_FORWARD(sqSrc, sdPlayer)] == pcOppSide + PIECE_PAWN) {
+			if (getPc(SQUARE_FORWARD(sqSrc, sdPlayer)) == pcOppSide + PIECE_PAWN) {
 				return true;
 			}
 			for (int delta = -1; delta <= 1; delta += 2) {
-				if (squares[sqSrc + delta] == pcOppSide + PIECE_PAWN) {
+				if (getPc(sqSrc + delta) == pcOppSide + PIECE_PAWN) {
 					return true;
 				}
 			}
 			for (int i = 0; i < 4; i ++) {
-				if (squares[sqSrc + ADVISOR_DELTA[i]] != 0) {
+				if (!square.isEmpty(sqSrc + ADVISOR_DELTA[i])) {
 					continue;
 				}
 				for (int j = 0; j < 2; j ++) {
-					int pcDst = squares[sqSrc + KNIGHT_CHECK_DELTA[i][j]];
+					int pcDst = getPc(sqSrc + KNIGHT_CHECK_DELTA[i][j]);
 					if (pcDst == pcOppSide + PIECE_KNIGHT) {
 						return true;
 					}
@@ -715,7 +711,7 @@ public class Position {
 				int delta = KING_DELTA[i];
 				int sqDst = sqSrc + delta;
 				while (board.contains(sqDst)) {
-					int pcDst = squares[sqDst];
+					int pcDst = getPc(sqDst);
 					if (pcDst > 0) {
 						if (pcDst == pcOppSide + PIECE_ROOK || pcDst == pcOppSide + PIECE_KING) {
 							return true;
@@ -726,7 +722,7 @@ public class Position {
 				}
 				sqDst += delta;
 				while (board.contains(sqDst)) {
-					int pcDst = squares[sqDst];
+					int pcDst = getPc(sqDst);
 					if (pcDst > 0) {
 						if (pcDst == pcOppSide + PIECE_CANNON) {
 							return true;
@@ -822,12 +818,7 @@ public class Position {
 	public Position mirror() {
 		Position pos = new Position();
 		pos.clearBoard();
-		for (int sq = 0; sq < 256; sq ++) {
-			int pc = squares[sq];
-			if (pc > 0) {
-				pos.addPiece(MIRROR_SQUARE(sq), pc);
-			}
-		}
+		square.mirror(pos);
 		if (sdPlayer == 1) {
 			pos.changeSide();
 		}
@@ -886,6 +877,10 @@ public class Position {
 	}
 
 	public int historyIndex(int mv) {
-		return ((squares[SRC(mv)] - 8) << 8) + DST(mv);
+		return ((getPc(SRC(mv)) - 8) << 8) + DST(mv);
 	}
+
+	public int getPc(int sq) {
+	    return square.get(sq);
+    }
 }

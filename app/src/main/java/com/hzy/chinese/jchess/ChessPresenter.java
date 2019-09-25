@@ -59,12 +59,36 @@ public class ChessPresenter extends GameLogic implements IGameCallback {
         return context.getString(id);
     }
 
-    private void loadDefaultConfig() {
+    private boolean loadDefaultConfig() {
+        boolean changed = false;
+
         mSoundEnable = mPreference.getBoolean(getString(R.string.pref_sound_key), true);
-        mHandicapIndex = Integer.parseInt(mPreference.getString(getString(R.string.pref_handicap_key), "0"));
-        mComputerFlip = mPreference.getBoolean(getString(R.string.pref_who_first_key), false);
-        mPieceStyle = Integer.parseInt(mPreference.getString(getString(R.string.pref_piece_style_key), "0"));
-        aiLevel = Integer.parseInt(mPreference.getString(getString(R.string.pref_level_key), "0"));
+
+        int handicap = Integer.parseInt(mPreference.getString(getString(R.string.pref_handicap_key), "0"));
+        if (handicap != mHandicapIndex) {
+            mHandicapIndex = handicap;
+            changed = true;
+        }
+
+        boolean flip = mPreference.getBoolean(getString(R.string.pref_who_first_key), false);
+        if (mComputerFlip != flip) {
+            changed = true;
+            mComputerFlip = flip;
+        }
+
+        int style = Integer.parseInt(mPreference.getString(getString(R.string.pref_piece_style_key), "0"));
+        if (style != mPieceStyle) {
+            mPieceStyle = style;
+            changed = true;
+        }
+
+        int level = Integer.parseInt(mPreference.getString(getString(R.string.pref_level_key), "0"));
+        if (level != aiLevel) {
+            aiLevel = level;
+            changed = true;
+        }
+
+        return changed;
     }
 
     private void initSoundPool() {
@@ -111,10 +135,16 @@ public class ChessPresenter extends GameLogic implements IGameCallback {
     }
 
     public void onResume() {
-        loadDefaultConfig();
+        boolean changed = loadDefaultConfig();
+
         setLevel(aiLevel);
         setPieceTheme(mPieceStyle);
-        mGameBoard.invalidate();
+
+        if (changed) {
+            restart();
+        } else {
+            mGameBoard.invalidate();
+        }
     }
 
     public void onDestroy() {

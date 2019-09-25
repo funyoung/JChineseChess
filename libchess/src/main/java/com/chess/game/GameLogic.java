@@ -1,5 +1,6 @@
 package com.chess.game;
 
+import com.chess.data.StartUpFen;
 import com.chess.xqwlight.Position;
 import com.chess.xqwlight.Search;
 import java.util.ArrayDeque;
@@ -57,9 +58,8 @@ public class GameLogic {
                 sq = (flipped ? Position.SQUARE_FLIP(sq) : sq);
                 int xx = x - Position.FILE_LEFT;
                 int yy = y - Position.RANK_TOP;
-                int pc = pos.squares[sq];
+                int pc = pos.getPc(sq);
                 if (pc > 0) {
-
                     float left = xx * mCellWidth;
                     float top = yy * mCellWidth;
                     float right = left + mCellWidth;
@@ -104,8 +104,7 @@ public class GameLogic {
     public void restart(boolean flipped, int handicap) {
         if (!thinking) {
             this.flipped = flipped;
-            int index = (handicap >= Position.STARTUP_FEN.length || handicap < 0) ? 0 : handicap;
-            currentFen = Position.STARTUP_FEN[index];
+            currentFen = StartUpFen.get(handicap);
             mHistoryList.clear();
             startPlay();
         }
@@ -156,7 +155,7 @@ public class GameLogic {
         int yy = (int) (y / mCellWidth);
         int sq_ = Position.COORD_XY(xx + Position.FILE_LEFT, yy + Position.RANK_TOP);
         int sq = (flipped ? Position.SQUARE_FLIP(sq_) : sq_);
-        int pc = pos.squares[sq];
+        int pc = pos.getPc(sq);
         if ((pc & Position.SIDE_TAG(pos.sdPlayer)) != 0) {
             if (sqSelected > 0) {
                 drawSquare(sqSelected);
