@@ -21,6 +21,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 package com.chess.xqwlight;
 
+import com.chess.data.Board;
+
 public class Search {
     private static final int HASH_ALPHA = 1;
     private static final int HASH_BETA = 2;
@@ -242,7 +244,7 @@ public class Search {
             genMoves = pos.generateMoves(mvs, vls);
             Util.shellSort(mvs, vls, 0, genMoves);
             for (int i = 0; i < genMoves; i++) {
-                if (vls[i] < 10 || (vls[i] < 20 && Position.HOME_HALF(Position.DST(mvs[i]), pos.sdPlayer))) {
+                if (vls[i] < 10 || (vls[i] < 20 && Position.HOME_HALF(Board.DST(mvs[i]), pos.sdPlayer))) {
                     genMoves = i;
                     break;
                 }

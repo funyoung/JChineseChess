@@ -52,11 +52,6 @@ public class Position {
 	public static final int PIECE_CANNON = 5;
 	public static final int PIECE_PAWN = 6;
 
-	public static final int RANK_TOP = 3;
-	public static final int RANK_BOTTOM = 12;
-	public static final int FILE_LEFT = 3;
-	public static final int FILE_RIGHT = 11;
-
 	private final AbstractArea board = new Board();
 	private final AbstractArea fort = new Fort();
 	private final LegalSpan legalSpan = new LegalSpan();
@@ -76,32 +71,8 @@ public class Position {
 		"rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/9/1C5C1/9/RN2K2NR w - - 0 1",	//让九子
 	};
 
-	public static int RANK_Y(int sq) {
-		return sq >> 4;
-	}
-
-	public static int FILE_X(int sq) {
-		return sq & 15;
-	}
-
-	public static int COORD_XY(int x, int y) {
-		return x + (y << 4);
-	}
-
 	public static int SQUARE_FLIP(int sq) {
 		return 254 - sq;
-	}
-
-	public static int FILE_FLIP(int x) {
-		return 14 - x;
-	}
-
-	public static int RANK_FLIP(int y) {
-		return 15 - y;
-	}
-
-	public static int MIRROR_SQUARE(int sq) {
-		return COORD_XY(FILE_FLIP(FILE_X(sq)), RANK_Y(sq));
 	}
 
 	public static int SQUARE_FORWARD(int sq, int sd) {
@@ -134,22 +105,6 @@ public class Position {
 
 	public static int OPP_SIDE_TAG(int sd) {
 		return 16 - (sd << 3);
-	}
-
-	public static int SRC(int mv) {
-		return mv & 255;
-	}
-
-	public static int DST(int mv) {
-		return mv >> 8;
-	}
-
-	public static int MOVE(int sqSrc, int sqDst) {
-		return sqSrc + (sqDst << 8);
-	}
-
-	public static int MIRROR_MOVE(int mv) {
-		return MOVE(MIRROR_SQUARE(SRC(mv)), MIRROR_SQUARE(DST(mv)));
 	}
 
 	public static int MVV_LVA(int pc, int lva) {
@@ -286,8 +241,8 @@ public class Position {
 	}
 
 	public void movePiece() {
-		int sqSrc = SRC(mvList[moveNum]);
-		int sqDst = DST(mvList[moveNum]);
+		int sqSrc = Board.SRC(mvList[moveNum]);
+		int sqDst = Board.DST(mvList[moveNum]);
 		pcList[moveNum] = squares[sqDst];
 		if (pcList[moveNum] > 0) {
 			delPiece(sqDst, pcList[moveNum]);
@@ -298,8 +253,8 @@ public class Position {
 	}
 
 	public void undoMovePiece() {
-		int sqSrc = SRC(mvList[moveNum]);
-		int sqDst = DST(mvList[moveNum]);
+		int sqSrc = Board.SRC(mvList[moveNum]);
+		int sqDst = Board.DST(mvList[moveNum]);
 		int pc = squares[sqDst];
 		delPiece(sqDst, pc);
 		addPiece(sqSrc, pc);
@@ -353,8 +308,8 @@ public class Position {
 
 	public void fromFen(String fen) {
 		clearBoard();
-		int y = RANK_TOP;
-		int x = FILE_LEFT;
+		int y = Board.top();
+		int x = Board.left();
 		int index = 0;
 		if (index == fen.length()) {
 			setIrrev();
@@ -363,26 +318,26 @@ public class Position {
 		char c = fen.charAt(index);
 		while (c != ' ') {
 			if (c == '/') {
-				x = FILE_LEFT;
+				x = Board.left();
 				y ++;
-				if (y > RANK_BOTTOM) {
+				if (y > Board.bottom()) {
 					break;
 				}
 			} else if (c >= '1' && c <= '9') {
 				x += (c - '0');
 			} else if (c >= 'A' && c <= 'Z') {
-				if (x <= FILE_RIGHT) {
+				if (x <= Board.right()) {
 					int pt = CHAR_TO_PIECE(c);
 					if (pt >= 0) {
-						addPiece(COORD_XY(x, y), pt + 8);
+						addPiece(Board.xy(x, y), pt + 8);
 					}
 					x ++;
 				}
 			} else if (c >= 'a' && c <= 'z') {
-				if (x <= FILE_RIGHT) {
+				if (x <= Board.right()) {
 					int pt = CHAR_TO_PIECE((char) (c + 'A' - 'a'));
 					if (pt >= 0) {
-						addPiece(COORD_XY(x, y), pt + 16);
+						addPiece(Board.xy(x, y), pt + 16);
 					}
 					x ++;
 				}
@@ -407,10 +362,10 @@ public class Position {
 
 	public String toFen() {
 		StringBuffer fen = new StringBuffer();
-		for (int y = RANK_TOP; y <= RANK_BOTTOM; y ++) {
+		for (int y = Board.top(); y <= Board.bottom(); y ++) {
 			int k = 0;
-			for (int x = FILE_LEFT; x <= FILE_RIGHT; x ++) {
-				int pc = squares[COORD_XY(x, y)];
+			for (int x = Board.left(); x <= Board.right(); x ++) {
+				int pc = squares[Board.xy(x, y)];
 				if (pc > 0) {
 					if (k > 0) {
 						fen.append((char) ('0' + k));
@@ -454,11 +409,11 @@ public class Position {
 					int pcDst = squares[sqDst];
 					if (vls == null) {
 						if ((pcDst & pcSelfSide) == 0) {
-							mvs[moves] = MOVE(sqSrc, sqDst);
+							mvs[moves] = Board.MOVE(sqSrc, sqDst);
 							moves ++;
 						}
 					} else if ((pcDst & pcOppSide) != 0) {
-						mvs[moves] = MOVE(sqSrc, sqDst);
+						mvs[moves] = Board.MOVE(sqSrc, sqDst);
 						vls[moves] = MVV_LVA(pcDst, 5);
 						moves ++;
 					}
@@ -473,11 +428,11 @@ public class Position {
 					int pcDst = squares[sqDst];
 					if (vls == null) {
 						if ((pcDst & pcSelfSide) == 0) {
-							mvs[moves] = MOVE(sqSrc, sqDst);
+							mvs[moves] = Board.MOVE(sqSrc, sqDst);
 							moves ++;
 						}
 					} else if ((pcDst & pcOppSide) != 0) {
-						mvs[moves] = MOVE(sqSrc, sqDst);
+						mvs[moves] = Board.MOVE(sqSrc, sqDst);
 						vls[moves] = MVV_LVA(pcDst, 1);
 						moves ++;
 					}
@@ -493,11 +448,11 @@ public class Position {
 					int pcDst = squares[sqDst];
 					if (vls == null) {
 						if ((pcDst & pcSelfSide) == 0) {
-							mvs[moves] = MOVE(sqSrc, sqDst);
+							mvs[moves] = Board.MOVE(sqSrc, sqDst);
 							moves ++;
 						}
 					} else if ((pcDst & pcOppSide) != 0) {
-						mvs[moves] = MOVE(sqSrc, sqDst);
+						mvs[moves] = Board.MOVE(sqSrc, sqDst);
 						vls[moves] = MVV_LVA(pcDst, 1);
 						moves ++;
 					}
@@ -517,11 +472,11 @@ public class Position {
 						int pcDst = squares[sqDst];
 						if (vls == null) {
 							if ((pcDst & pcSelfSide) == 0) {
-								mvs[moves] = MOVE(sqSrc, sqDst);
+								mvs[moves] = Board.MOVE(sqSrc, sqDst);
 								moves ++;
 							}
 						} else if ((pcDst & pcOppSide) != 0) {
-							mvs[moves] = MOVE(sqSrc, sqDst);
+							mvs[moves] = Board.MOVE(sqSrc, sqDst);
 							vls[moves] = MVV_LVA(pcDst, 1);
 							moves ++;
 						}
@@ -536,12 +491,12 @@ public class Position {
 						int pcDst = squares[sqDst];
 						if (pcDst == 0) {
 							if (vls == null) {
-								mvs[moves] = MOVE(sqSrc, sqDst);
+								mvs[moves] = Board.MOVE(sqSrc, sqDst);
 								moves ++;
 							}
 						} else {
 							if ((pcDst & pcOppSide) != 0) {
-								mvs[moves] = MOVE(sqSrc, sqDst);
+								mvs[moves] = Board.MOVE(sqSrc, sqDst);
 								if (vls != null) {
 									vls[moves] = MVV_LVA(pcDst, 4);
 								}
@@ -561,7 +516,7 @@ public class Position {
 						int pcDst = squares[sqDst];
 						if (pcDst == 0) {
 							if (vls == null) {
-								mvs[moves] = MOVE(sqSrc, sqDst);
+								mvs[moves] = Board.MOVE(sqSrc, sqDst);
 								moves ++;
 							}
 						} else {
@@ -574,7 +529,7 @@ public class Position {
 						int pcDst = squares[sqDst];
 						if (pcDst > 0) {
 							if ((pcDst & pcOppSide) != 0) {
-								mvs[moves] = MOVE(sqSrc, sqDst);
+								mvs[moves] = Board.MOVE(sqSrc, sqDst);
 								if (vls != null) {
 									vls[moves] = MVV_LVA(pcDst, 4);
 								}
@@ -592,11 +547,11 @@ public class Position {
 					int pcDst = squares[sqDst];
 					if (vls == null) {
 						if ((pcDst & pcSelfSide) == 0) {
-							mvs[moves] = MOVE(sqSrc, sqDst);
+							mvs[moves] = Board.MOVE(sqSrc, sqDst);
 							moves ++;
 						}
 					} else if ((pcDst & pcOppSide) != 0) {
-						mvs[moves] = MOVE(sqSrc, sqDst);
+						mvs[moves] = Board.MOVE(sqSrc, sqDst);
 						vls[moves] = MVV_LVA(pcDst, 2);
 						moves ++;
 					}
@@ -608,11 +563,11 @@ public class Position {
 							int pcDst = squares[sqDst];
 							if (vls == null) {
 								if ((pcDst & pcSelfSide) == 0) {
-									mvs[moves] = MOVE(sqSrc, sqDst);
+									mvs[moves] = Board.MOVE(sqSrc, sqDst);
 									moves ++;
 								}
 							} else if ((pcDst & pcOppSide) != 0) {
-								mvs[moves] = MOVE(sqSrc, sqDst);
+								mvs[moves] = Board.MOVE(sqSrc, sqDst);
 								vls[moves] = MVV_LVA(pcDst, 2);
 								moves ++;
 							}
@@ -626,14 +581,14 @@ public class Position {
 	}
 
 	public boolean legalMove(int mv) {
-		int sqSrc = SRC(mv);
+		int sqSrc = Board.SRC(mv);
 		int pcSrc = squares[sqSrc];
 		int pcSelfSide = SIDE_TAG(sdPlayer);
 		if ((pcSrc & pcSelfSide) == 0) {
 			return false;
 		}
 
-		int sqDst = DST(mv);
+		int sqDst = Board.DST(mv);
 		int pcDst = squares[sqDst];
 		if ((pcDst & pcSelfSide) != 0) {
 			return false;
@@ -825,7 +780,7 @@ public class Position {
 		for (int sq = 0; sq < 256; sq ++) {
 			int pc = squares[sq];
 			if (pc > 0) {
-				pos.addPiece(MIRROR_SQUARE(sq), pc);
+				pos.addPiece(Board.MIRROR_SQUARE(sq), pc);
 			}
 		}
 		if (sdPlayer == 1) {
@@ -860,7 +815,7 @@ public class Position {
 		index ++;
 		while (index < bookSize && bookLock[index] == lock) {
 			int mv = 0xffff & bookMove[index];
-			mv = (mirror ? MIRROR_MOVE(mv) : mv);
+			mv = (mirror ? Board.MIRROR_MOVE(mv) : mv);
 			if (legalMove(mv)) {
 				mvs[moves] = mv;
 				vls[moves] = bookValue[index];
@@ -886,6 +841,6 @@ public class Position {
 	}
 
 	public int historyIndex(int mv) {
-		return ((squares[SRC(mv)] - 8) << 8) + DST(mv);
+		return ((squares[Board.SRC(mv)] - 8) << 8) + Board.DST(mv);
 	}
 }
