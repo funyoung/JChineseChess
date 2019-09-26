@@ -34,7 +34,7 @@ public class Square {
         for (int sq = 0; sq < squares.length; sq ++) {
             int pc = squares[sq];
             if (pc > 0) {
-                pos.addPiece(Position.MIRROR_SQUARE(sq), pc);
+                pos.addPiece(Board.MIRROR_SQUARE(sq), pc);
             }
         }
     }

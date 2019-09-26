@@ -1,6 +1,7 @@
 package com.chess.game;
 
 import com.chess.data.StartUpFen;
+import com.chess.data.Board;
 import com.chess.xqwlight.Position;
 import com.chess.xqwlight.Search;
 import java.util.ArrayDeque;
@@ -52,12 +53,12 @@ public class GameLogic {
     }
 
     public void drawGameBoard() {
-        for (int x = Position.FILE_LEFT; x <= Position.FILE_RIGHT; x++) {
-            for (int y = Position.RANK_TOP; y <= Position.RANK_BOTTOM; y++) {
-                int sq = Position.COORD_XY(x, y);
+        for (int x = Board.left(); x <= Board.right(); x++) {
+            for (int y = Board.top(); y <= Board.bottom(); y++) {
+                int sq = Board.xy(x, y);
                 sq = (flipped ? Position.SQUARE_FLIP(sq) : sq);
-                int xx = x - Position.FILE_LEFT;
-                int yy = y - Position.RANK_TOP;
+                int xx = Board.x(x);
+                int yy = Board.y(y);
                 int pc = pos.getPc(sq);
                 if (pc > 0) {
                     float left = xx * mCellWidth;
@@ -71,8 +72,8 @@ public class GameLogic {
 
                     mGameView.drawPiece(pc, left, top, right, bottom);
                 }
-                if (sq == sqSelected || sq == Position.SRC(mvLast) ||
-                        sq == Position.DST(mvLast)) {
+                if (sq == sqSelected || sq == Board.SRC(mvLast) ||
+                        sq == Board.DST(mvLast)) {
                     float left = xx * mCellWidth;
                     float top = yy * mCellWidth;
                     float right = left + mCellWidth;
@@ -153,7 +154,7 @@ public class GameLogic {
 
         int xx = (int) (x / mCellWidth);
         int yy = (int) (y / mCellWidth);
-        int sq_ = Position.COORD_XY(xx + Position.FILE_LEFT, yy + Position.RANK_TOP);
+        int sq_ = Board.xyOffset(xx, yy);
         int sq = (flipped ? Position.SQUARE_FLIP(sq_) : sq_);
         int pc = pos.getPc(sq);
         if ((pc & Position.SIDE_TAG(pos.sdPlayer)) != 0) {
@@ -169,7 +170,7 @@ public class GameLogic {
             playSound(RESP_CLICK);
             mGameView.postRepaint();
         } else if (sqSelected > 0) {
-            int mv = Position.MOVE(sqSelected, sq);
+            int mv = Board.MOVE(sqSelected, sq);
             if (!pos.legalMove(mv)) {
                 return;
             }
@@ -195,9 +196,9 @@ public class GameLogic {
     }
 
     private void drawSquare(int sq_) {
-        int sq = (flipped ? Position.SQUARE_FLIP(sq_) : sq_);
-        int x = Position.FILE_X(sq) - Position.FILE_LEFT;
-        int y = Position.RANK_Y(sq) - Position.RANK_TOP;
+//        int sq = (flipped ? Position.SQUARE_FLIP(sq_) : sq_);
+//        int x = Position.FILE_X(sq) - Position.FILE_LEFT;
+//        int y = Position.RANK_Y(sq) - Position.RANK_TOP;
         //canvas.postRepaint(x, y, SQUARE_SIZE, SQUARE_SIZE);
     }
 
@@ -227,6 +228,7 @@ public class GameLogic {
     private void thinking() {
         thinking = true;
         new Thread() {
+            @Override
             public void run() {
                 mGameCallback.postStartThink();
                 int mv = mvLast;
