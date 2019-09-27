@@ -1,6 +1,15 @@
 package com.chess.data;
 
 public class PieceValue {
+
+    public static final int PIECE_KING = 0;
+    public static final int PIECE_ADVISOR = 1;
+    public static final int PIECE_BISHOP = 2;
+    public static final int PIECE_KNIGHT = 3;
+    public static final int PIECE_ROOK = 4;
+    public static final int PIECE_CANNON = 5;
+    public static final int PIECE_PAWN = 6;
+
     private static final short[][] PIECE_VALUE = {
         {
             0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -127,5 +136,38 @@ public class PieceValue {
 
     public int getValue(int pcAdjust, int sq, boolean del) {
         return del ? -PIECE_VALUE[pcAdjust][sq] : PIECE_VALUE[pcAdjust][sq];
+    }
+
+
+    public static int charToPiece(char c) {
+        switch (c) {
+            case 'K':
+            case 'k':
+                return PIECE_KING;
+            case 'A':
+            case 'a':
+                return PIECE_ADVISOR;
+            case 'B':
+            case 'E':
+            case 'b':
+            case 'e':
+                return PIECE_BISHOP;
+            case 'H':
+            case 'N':
+            case 'h':
+            case 'n':
+                return PIECE_KNIGHT;
+            case 'R':
+            case 'r':
+                return PIECE_ROOK;
+            case 'C':
+            case 'c':
+                return PIECE_CANNON;
+            case 'P':
+            case 'p':
+                return PIECE_PAWN;
+            default:
+                return -1;
+        }
     }
 }

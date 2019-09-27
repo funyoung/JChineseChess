@@ -33,6 +33,14 @@ import com.chess.data.Square;
 import java.io.InputStream;
 import java.util.Random;
 
+import static com.chess.data.PieceValue.PIECE_ADVISOR;
+import static com.chess.data.PieceValue.PIECE_BISHOP;
+import static com.chess.data.PieceValue.PIECE_CANNON;
+import static com.chess.data.PieceValue.PIECE_KING;
+import static com.chess.data.PieceValue.PIECE_KNIGHT;
+import static com.chess.data.PieceValue.PIECE_PAWN;
+import static com.chess.data.PieceValue.PIECE_ROOK;
+
 public class Position {
 	public static final int MATE_VALUE = 10000;
 	public static final int BAN_VALUE = MATE_VALUE - 100;
@@ -46,14 +54,6 @@ public class Position {
 	public static final int MAX_GEN_MOVES = 128;
 	public static final int MAX_BOOK_SIZE = 16384;
 
-	public static final int PIECE_KING = 0;
-	public static final int PIECE_ADVISOR = 1;
-	public static final int PIECE_BISHOP = 2;
-	public static final int PIECE_KNIGHT = 3;
-	public static final int PIECE_ROOK = 4;
-	public static final int PIECE_CANNON = 5;
-	public static final int PIECE_PAWN = 6;
-
 	private final AbstractArea board = new Board();
 	private final AbstractArea fort = new Fort();
 	private final LegalSpan legalSpan = new LegalSpan();
@@ -62,11 +62,11 @@ public class Position {
 
 	private final Square square = new Square();
 
-	public static final int[] KING_DELTA = {-16, -1, 1, 16};
-	public static final int[] ADVISOR_DELTA = {-17, -15, 15, 17};
-	public static final int[][] KNIGHT_DELTA = {{-33, -31}, {-18, 14}, {-14, 18}, {31, 33}};
-	public static final int[][] KNIGHT_CHECK_DELTA = {{-33, -18}, {-31, -14}, {14, 31}, {18, 33}};
-	public static final int[] MVV_VALUE = {50, 10, 10, 30, 40, 30, 20, 0};
+	protected static final int[] KING_DELTA = {-16, -1, 1, 16};
+	protected static final int[] ADVISOR_DELTA = {-17, -15, 15, 17};
+	protected static final int[][] KNIGHT_DELTA = {{-33, -31}, {-18, 14}, {-14, 18}, {31, 33}};
+	protected static final int[][] KNIGHT_CHECK_DELTA = {{-33, -18}, {-31, -14}, {14, 31}, {18, 33}};
+	protected static final int[] MVV_VALUE = {50, 10, 10, 30, 40, 30, 20, 0};
 
 	public static int SQUARE_FLIP(int sq) {
 		return 254 - sq;
@@ -291,10 +291,13 @@ public class Position {
     }
 
     private void addPiece(Location location, char c, int offset) {
-        int pt = Board.addPiece(location, c);
-        if (pt >= 0) {
-            addPiece(Board.getSq(location), pt + offset);
-        }
+		if (Board.checkRightBound(location)) {
+			int pt = PieceValue.charToPiece(c);
+			if (pt >= 0) {
+				addPiece(Board.getSq(location), pt + offset);
+			}
+			location.nextCol();
+		}
     }
 
 	public void fromFen(String fen) {
@@ -307,16 +310,16 @@ public class Position {
         Location location = Board.getLeftTop();
         int index = 0;
 		char c = fen.charAt(index);
-		while (c != ' ') {
+		while (!Character.isSpaceChar(c)) {
 			if (c == '/') {
 			    if (!Board.nextRow(location)) {
 			        break;
                 }
-			} else if (c >= '1' && c <= '9') {
+			} else if (Character.isDigit(c) && c != '0') {
 			    location.xShift(c);
-			} else if (c >= 'A' && c <= 'Z') {
+			} else if (Character.isUpperCase(c)) {
                 addPiece(location, c, 8);
-			} else if (c >= 'a' && c <= 'z') {
+			} else if (Character.isLowerCase(c)) {
                 addPiece(location, c, 16);
 			}
 
@@ -820,38 +823,5 @@ public class Position {
 
 	public int getPc(int sq) {
 	    return square.get(sq);
-    }
-
-
-    public static int CHAR_TO_PIECE(char c) {
-        switch (c) {
-            case 'K':
-            case 'k':
-                return PIECE_KING;
-            case 'A':
-            case 'a':
-                return PIECE_ADVISOR;
-            case 'B':
-            case 'E':
-            case 'b':
-            case 'e':
-                return PIECE_BISHOP;
-            case 'H':
-            case 'N':
-            case 'h':
-            case 'n':
-                return PIECE_KNIGHT;
-            case 'R':
-            case 'r':
-                return PIECE_ROOK;
-            case 'C':
-            case 'c':
-                return PIECE_CANNON;
-            case 'P':
-            case 'p':
-                return PIECE_PAWN;
-            default:
-                return -1;
-        }
     }
 }
