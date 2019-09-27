@@ -1,5 +1,7 @@
 package com.chess.xqwlight;
 
+import com.chess.data.StartUpFen;
+
 import org.junit.Assert;
 import org.junit.Before;
 
@@ -13,55 +15,53 @@ public class PositionTest {
         pos = new Position();
     }
 
+    private boolean fromFen_toFen_Assert(int i) {
+        String fen = StartUpFen.get(0);
+        pos.fromFen(fen);
+        return fen.startsWith(pos.toFen());
+    }
+
     @org.junit.Test
     public void fromFen_toFen_handicap_none() {
-        String fen = Position.STARTUP_FEN[0];
-        pos.fromFen(fen);
-        Assert.assertEquals(fen, pos.toFen());
+        Assert.assertTrue(fromFen_toFen_Assert(0));
     }
 
     @org.junit.Test
     public void fromFen_toFen_handicap_left_knight() {
-        String fen = Position.STARTUP_FEN[1];
-        pos.fromFen(fen);
-        Assert.assertEquals(fen, pos.toFen());
+        Assert.assertTrue(fromFen_toFen_Assert(1));
     }
 
 
     @org.junit.Test
     public void fromFen_toFen_handicap_both_knight() {
-        String fen = Position.STARTUP_FEN[2];
-        pos.fromFen(fen);
-        Assert.assertEquals(fen, pos.toFen());
+        Assert.assertTrue(fromFen_toFen_Assert(2));
     }
 
 
     @org.junit.Test
     public void fromFen_toFen_handicap_nine_pieces() {
-        String fen = Position.STARTUP_FEN[3];
-        pos.fromFen(fen);
-        Assert.assertEquals(fen, pos.toFen());
+        Assert.assertTrue(fromFen_toFen_Assert(3));
     }
 
     @org.junit.Test
     public void fromFen_handicap_none() {
-        pos.fromFen(Position.STARTUP_FEN[0]);
+        pos.fromFen(StartUpFen.get(0));
     }
 
     @org.junit.Test
     public void fromFen_handicap_left_knight() {
-        pos.fromFen(Position.STARTUP_FEN[1]);
+        pos.fromFen(StartUpFen.get(1));
     }
 
 
     @org.junit.Test
     public void fromFen_handicap_both_knight() {
-        pos.fromFen(Position.STARTUP_FEN[2]);
+        pos.fromFen(StartUpFen.get(2));
     }
 
 
     @org.junit.Test
     public void fromFen_handicap_nine_pieces() {
-        pos.fromFen(Position.STARTUP_FEN[3]);
+        pos.fromFen(StartUpFen.get(3));
     }
 }
