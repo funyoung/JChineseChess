@@ -25,6 +25,7 @@ import com.chess.data.AbstractArea;
 import com.chess.data.Board;
 import com.chess.data.Fort;
 import com.chess.data.LegalSpan;
+import com.chess.data.Location;
 import com.chess.data.PieceValue;
 import com.chess.data.Pin;
 import com.chess.data.Square;
@@ -108,29 +109,6 @@ public class Position {
 	}
 
 	public static final String FEN_PIECE = "        KABNRCP kabnrcp ";
-
-	public static int CHAR_TO_PIECE(char c) {
-		switch (c) {
-		case 'K':
-			return PIECE_KING;
-		case 'A':
-			return PIECE_ADVISOR;
-		case 'B':
-		case 'E':
-			return PIECE_BISHOP;
-		case 'H':
-		case 'N':
-			return PIECE_KNIGHT;
-		case 'R':
-			return PIECE_ROOK;
-		case 'C':
-			return PIECE_CANNON;
-		case 'P':
-			return PIECE_PAWN;
-		default:
-			return -1;
-		}
-	}
 
 	public static int PreGen_zobristKeyPlayer;
 	public static int PreGen_zobristLockPlayer;
@@ -303,54 +281,58 @@ public class Position {
 		changeSide();
 	}
 
+	private boolean validateFen(String fen, int index) {
+        if (index == fen.length()) {
+            setIrrev();
+            return false;
+        }
+
+        return true;
+    }
+
+    private void addPiece(Location location, char c, int offset) {
+        int pt = Board.addPiece(location, c);
+        if (pt >= 0) {
+            addPiece(Board.getSq(location), pt + offset);
+        }
+    }
+
 	public void fromFen(String fen) {
-		clearBoard();
-		int y = Board.top();
-		int x = Board.left();
-		int index = 0;
-		if (index == fen.length()) {
-			setIrrev();
+        clearBoard();
+
+        if (!validateFen(fen, 0)) {
 			return;
 		}
+
+        Location location = Board.getLeftTop();
+        int index = 0;
 		char c = fen.charAt(index);
 		while (c != ' ') {
 			if (c == '/') {
-				x = Board.left();
-				y ++;
-				if (y > Board.bottom()) {
-					break;
-				}
+			    if (!Board.nextRow(location)) {
+			        break;
+                }
 			} else if (c >= '1' && c <= '9') {
-				x += (c - '0');
+			    location.xShift(c);
 			} else if (c >= 'A' && c <= 'Z') {
-				if (x <= Board.right()) {
-					int pt = CHAR_TO_PIECE(c);
-					if (pt >= 0) {
-						addPiece(Board.xy(x, y), pt + 8);
-					}
-					x ++;
-				}
+                addPiece(location, c, 8);
 			} else if (c >= 'a' && c <= 'z') {
-				if (x <= Board.right()) {
-					int pt = CHAR_TO_PIECE((char) (c + 'A' - 'a'));
-					if (pt >= 0) {
-						addPiece(Board.xy(x, y), pt + 16);
-					}
-					x ++;
-				}
+                addPiece(location, c, 16);
 			}
-			index ++;
-			if (index == fen.length()) {
-				setIrrev();
+
+			index++;
+			if (!validateFen(fen, index)) {
 				return;
 			}
+
 			c = fen.charAt(index);
 		}
+
 		index ++;
-		if (index == fen.length()) {
-			setIrrev();
+		if (!validateFen(fen, index)) {
 			return;
 		}
+
 		if (sdPlayer == (fen.charAt(index) == 'b' ? 0 : 1)) {
 			changeSide();
 		}
@@ -378,6 +360,7 @@ public class Position {
 			}
 			fen.append('/');
 		}
+
 		fen.setCharAt(fen.length() - 1, ' ');
 		fen.append(sdPlayer == 0 ? 'w' : 'b');
 		return fen.toString();
@@ -837,5 +820,38 @@ public class Position {
 
 	public int getPc(int sq) {
 	    return square.get(sq);
+    }
+
+
+    public static int CHAR_TO_PIECE(char c) {
+        switch (c) {
+            case 'K':
+            case 'k':
+                return PIECE_KING;
+            case 'A':
+            case 'a':
+                return PIECE_ADVISOR;
+            case 'B':
+            case 'E':
+            case 'b':
+            case 'e':
+                return PIECE_BISHOP;
+            case 'H':
+            case 'N':
+            case 'h':
+            case 'n':
+                return PIECE_KNIGHT;
+            case 'R':
+            case 'r':
+                return PIECE_ROOK;
+            case 'C':
+            case 'c':
+                return PIECE_CANNON;
+            case 'P':
+            case 'p':
+                return PIECE_PAWN;
+            default:
+                return -1;
+        }
     }
 }

@@ -1,5 +1,7 @@
 package com.chess.data;
 
+import com.chess.xqwlight.Position;
+
 /**
  * Abstract Board out from Position
  */
@@ -58,6 +60,28 @@ public class Board extends AbstractArea {
 
     public static int bottom() {
         return RANK_BOTTOM;
+    }
+
+    public static Location getLeftTop() {
+        return new Location(left(), top());
+    }
+
+    public static boolean nextRow(Location location) {
+        return location.nextRow(left(), bottom());
+    }
+
+    public static int addPiece(Location location, char c) {
+        int pt = -1;
+        if (location.x <= right()) {
+            pt = Position.CHAR_TO_PIECE(c);
+            location.nextCol();
+        }
+
+        return pt;
+    }
+
+    public static int getSq(Location location) {
+        return xy(location.x, location.y);
     }
 
     @Override
