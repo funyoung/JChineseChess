@@ -70,18 +70,13 @@ public class Board extends AbstractArea {
         return location.nextRow(left(), bottom());
     }
 
-    public static int addPiece(Location location, char c) {
-        int pt = -1;
-        if (location.x <= right()) {
-            pt = Position.CHAR_TO_PIECE(c);
-            location.nextCol();
-        }
-
-        return pt;
-    }
 
     public static int getSq(Location location) {
         return xy(location.x, location.y);
+    }
+
+    public static boolean checkRightBound(Location location) {
+        return location.x <= right();
     }
 
     @Override
