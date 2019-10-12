@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 
 import com.blankj.utilcode.util.ActivityUtils;
+import com.chess.data.Book;
 import com.hzy.chinese.jchess.R;
 import com.chess.game.GameConfig;
 import com.chess.xqwlight.Position;
@@ -38,7 +39,7 @@ public class SplashActivity extends Activity {
                 try {
                     // do some loading job
                     InputStream is = getAssets().open(GameConfig.DAT_ASSETS_PATH);
-                    Position.loadBook(is);
+                    Book.loadBook(is);
                     mDataLoaded = true;
                 } catch (Exception e) {
                     e.printStackTrace();

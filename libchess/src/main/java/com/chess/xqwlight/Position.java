@@ -23,6 +23,7 @@ package com.chess.xqwlight;
 
 import com.chess.data.AbstractArea;
 import com.chess.data.Board;
+import com.chess.data.Book;
 import com.chess.data.Fort;
 import com.chess.data.LegalSpan;
 import com.chess.data.Location;
@@ -30,7 +31,6 @@ import com.chess.data.PieceValue;
 import com.chess.data.Pin;
 import com.chess.data.Square;
 
-import java.io.InputStream;
 import java.util.Random;
 
 import static com.chess.data.PieceValue.PIECE_ADVISOR;
@@ -52,7 +52,6 @@ public class Position {
 
 	public static final int MAX_MOVE_NUM = 256;
 	public static final int MAX_GEN_MOVES = 128;
-	public static final int MAX_BOOK_SIZE = 16384;
 
 	private final AbstractArea board = new Board();
 	private final AbstractArea fort = new Fort();
@@ -61,6 +60,7 @@ public class Position {
 	private final PieceValue pieceValue = new PieceValue();
 
 	private final Square square = new Square();
+	private final Book book = new Book();
 
 	protected static final int[] KING_DELTA = {-16, -1, 1, 16};
 	protected static final int[] ADVISOR_DELTA = {-17, -15, 15, 17};
@@ -110,61 +110,9 @@ public class Position {
 
 	public static final String FEN_PIECE = "        KABNRCP kabnrcp ";
 
-	public static int PreGen_zobristKeyPlayer;
-	public static int PreGen_zobristLockPlayer;
-	public static int[][] PreGen_zobristKeyTable = new int[14][256];
-	public static int[][] PreGen_zobristLockTable = new int[14][256];
-
 	public static Random random = new Random();
 
-	public static int bookSize = 0;
-	public static int[] bookLock = new int[MAX_BOOK_SIZE];
-	public static short[] bookMove = new short[MAX_BOOK_SIZE];
-	public static short[] bookValue = new short[MAX_BOOK_SIZE];
-
-	public static volatile boolean bookLoadOk = false;
-
-    public static boolean loadBook(InputStream in) {
-        if (bookLoadOk) {
-            return true;
-        }
-        RC4 rc4 = new RC4(new byte[]{0});
-        PreGen_zobristKeyPlayer = rc4.nextLong();
-        rc4.nextLong(); // Skip ZobristLock0
-        PreGen_zobristLockPlayer = rc4.nextLong();
-        for (int i = 0; i < 14; i++) {
-            for (int j = 0; j < 256; j++) {
-                PreGen_zobristKeyTable[i][j] = rc4.nextLong();
-                rc4.nextLong(); // Skip ZobristLock0
-                PreGen_zobristLockTable[i][j] = rc4.nextLong();
-            }
-        }
-        if (in != null) {
-            try {
-                while (bookSize < MAX_BOOK_SIZE) {
-                    bookLock[bookSize] = Util.readInt(in) >>> 1;
-                    bookMove[bookSize] = (short) Util.readShort(in);
-                    bookValue[bookSize] = (short) Util.readShort(in);
-                    bookSize++;
-                }
-                in.close();
-                bookLoadOk = true;
-                return true;
-            } catch (Exception e) {
-                e.printStackTrace();
-                try {
-                    in.close();
-                } catch (Exception e1) {
-                    e1.printStackTrace();
-                }
-            }
-        }
-        return false;
-    }
-
 	public int sdPlayer;
-	public int zobristKey;
-	public int zobristLock;
 	public int vlWhite, vlBlack;
 	public int moveNum, distance;
 
@@ -176,7 +124,7 @@ public class Position {
 	public void clearBoard() {
 		sdPlayer = 0;
 		square.clear();
-		zobristKey = zobristLock = 0;
+		book.clear();
 		vlWhite = vlBlack = 0;
 	}
 
@@ -203,8 +151,7 @@ public class Position {
 			vlBlack += pieceValue.getValue(pcAdjust, SQUARE_FLIP(sq), del);
 			pcAdjust += 7;
 		}
-		zobristKey ^= PreGen_zobristKeyTable[pcAdjust][sq];
-		zobristLock ^= PreGen_zobristLockTable[pcAdjust][sq];
+		book.addPiece(pcAdjust, sq);
 	}
 
 	public void addPiece(int sq, int pc) {
@@ -240,12 +187,11 @@ public class Position {
 
 	public void changeSide() {
 		sdPlayer = 1 - sdPlayer;
-		zobristKey ^= PreGen_zobristKeyPlayer;
-		zobristLock ^= PreGen_zobristLockPlayer;
+		book.changeSide();
 	}
 
 	public boolean makeMove(int mv) {
-		keyList[moveNum] = zobristKey;
+		keyList[moveNum] = book.zobristKey;
 		mvList[moveNum] = mv;
 		movePiece();
 		if (checked()) {
@@ -267,7 +213,7 @@ public class Position {
 	}
 
 	public void nullMove() {
-		keyList[moveNum] = zobristKey;
+		keyList[moveNum] = book.zobristKey;
 		changeSide();
 		mvList[moveNum] = pcList[moveNum] = 0;
 		chkList[moveNum] = false;
@@ -741,7 +687,7 @@ public class Position {
 		while (mvList[index] > 0 && pcList[index] == 0) {
 			if (selfSide) {
 				perpCheck = perpCheck && chkList[index];
-				if (keyList[index] == zobristKey) {
+				if (keyList[index] == book.zobristKey) {
 					recur --;
 					if (recur == 0) {
 						return 1 + (perpCheck ? 2 : 0) + (oppPerpCheck ? 4 : 0);
@@ -766,23 +712,29 @@ public class Position {
 		return pos;
 	}
 
+	private int getUnSignedLock() {
+		return book.getUnSignedLock();
+	}
+
 	public int bookMove() {
-		if (bookSize == 0) {
+		if (book.empty()) {
 			return 0;
 		}
+
 		boolean mirror = false;
-		int lock = zobristLock >>> 1; // Convert into Unsigned
-		int index = Util.binarySearch(lock, bookLock, 0, bookSize);
+		int lock = getUnSignedLock(); // Convert into Unsigned
+		int index = book.binarySearch(lock);
 		if (index < 0) {
 			mirror = true;
-			lock = mirror().zobristLock >>> 1; // Convert into Unsigned
-			index = Util.binarySearch(lock, bookLock, 0, bookSize);
+			lock = mirror().getUnSignedLock(); // Convert into Unsigned
+			index = book.binarySearch(lock);
 		}
+
 		if (index < 0) {
 			return 0;
 		}
 		index --;
-		while (index >= 0 && bookLock[index] == lock) {
+		while (book.checkLowerLock(index, lock)) {
 			index --;
 		}
 		int[] mvs = new int[MAX_GEN_MOVES];
@@ -790,12 +742,12 @@ public class Position {
 		int value = 0;
 		int moves = 0;
 		index ++;
-		while (index < bookSize && bookLock[index] == lock) {
-			int mv = 0xffff & bookMove[index];
+		while (book.checkUpperLock(index, lock)) {
+			int mv = book.getMove(index);
 			mv = (mirror ? Board.MIRROR_MOVE(mv) : mv);
 			if (legalMove(mv)) {
 				mvs[moves] = mv;
-				vls[moves] = bookValue[index];
+				vls[moves] = book.getValue(index);
 				value += vls[moves];
 				moves ++;
 				if (moves == MAX_GEN_MOVES) {
@@ -824,4 +776,12 @@ public class Position {
 	public int getPc(int sq) {
 	    return square.get(sq);
     }
+
+	public int getZobristKey() {
+		return book.zobristKey;
+	}
+
+	public int getZobristLock() {
+		return book.zobristLock;
+	}
 }

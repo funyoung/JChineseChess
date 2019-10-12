@@ -51,12 +51,12 @@ public class Search {
     }
 
     private HashItem getHashItem() {
-        return hashTable[pos.zobristKey & hashMask];
+        return hashTable[pos.getZobristKey() & hashMask];
     }
 
     private int probeHash(int vlAlpha, int vlBeta, int depth, int[] mv) {
         HashItem hash = getHashItem();
-        if (hash.zobristLock != pos.zobristLock) {
+        if (hash.zobristLock != pos.getZobristLock()) {
             mv[0] = 0;
             return -MATE_VALUE;
         }
@@ -111,7 +111,7 @@ public class Search {
             hash.vl = (short) vl;
         }
         hash.mv = mv;
-        hash.zobristLock = pos.zobristLock;
+        hash.zobristLock = pos.getZobristLock();
     }
 
     private class SortItem {
