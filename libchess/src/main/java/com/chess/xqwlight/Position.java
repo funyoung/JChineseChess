@@ -25,6 +25,8 @@ import com.chess.data.AbstractArea;
 import com.chess.data.Board;
 import com.chess.data.Book;
 import com.chess.data.Fort;
+import com.chess.data.IPiece;
+import com.chess.data.ISearch;
 import com.chess.data.LegalSpan;
 import com.chess.data.Location;
 import com.chess.data.PieceValue;
@@ -33,25 +35,13 @@ import com.chess.data.Square;
 
 import java.util.Random;
 
-import static com.chess.data.PieceValue.PIECE_ADVISOR;
-import static com.chess.data.PieceValue.PIECE_BISHOP;
-import static com.chess.data.PieceValue.PIECE_CANNON;
-import static com.chess.data.PieceValue.PIECE_KING;
-import static com.chess.data.PieceValue.PIECE_KNIGHT;
-import static com.chess.data.PieceValue.PIECE_PAWN;
-import static com.chess.data.PieceValue.PIECE_ROOK;
-
-public class Position {
-	public static final int MATE_VALUE = 10000;
-	public static final int BAN_VALUE = MATE_VALUE - 100;
-	public static final int WIN_VALUE = MATE_VALUE - 200;
+public class Position implements IPiece, ISearch {
 	public static final int NULL_SAFE_MARGIN = 400;
 	public static final int NULL_OKAY_MARGIN = 200;
 	public static final int DRAW_VALUE = 20;
 	public static final int ADVANCED_VALUE = 3;
 
 	public static final int MAX_MOVE_NUM = 256;
-	public static final int MAX_GEN_MOVES = 128;
 
 	private final AbstractArea board = new Board();
 	private final AbstractArea fort = new Fort();

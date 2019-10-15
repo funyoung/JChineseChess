@@ -22,18 +22,15 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 package com.chess.xqwlight;
 
 import com.chess.data.Board;
+import com.chess.data.ISearch;
 
-public class Search {
+public class Search implements ISearch {
     private static final int HASH_ALPHA = 1;
     private static final int HASH_BETA = 2;
     private static final int HASH_PV = 3;
     private static final int LIMIT_DEPTH = 64;
     private static final int NULL_DEPTH = 2;
     private static final int RANDOM_MASK = 7;
-    private static final int MAX_GEN_MOVES = Position.MAX_GEN_MOVES;
-    private static final int MATE_VALUE = Position.MATE_VALUE;
-    private static final int BAN_VALUE = Position.BAN_VALUE;
-    private static final int WIN_VALUE = Position.WIN_VALUE;
 
     private int hashMask, mvResult, allNodes, allMillis;
     private HashItem[] hashTable;

@@ -1,15 +1,6 @@
 package com.chess.data;
 
-public class PieceValue {
-
-    public static final int PIECE_KING = 0;
-    public static final int PIECE_ADVISOR = 1;
-    public static final int PIECE_BISHOP = 2;
-    public static final int PIECE_KNIGHT = 3;
-    public static final int PIECE_ROOK = 4;
-    public static final int PIECE_CANNON = 5;
-    public static final int PIECE_PAWN = 6;
-
+public class PieceValue implements IPiece{
     private static final short[][] PIECE_VALUE = {
         {
             0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
