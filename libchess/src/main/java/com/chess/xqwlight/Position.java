@@ -33,6 +33,7 @@ import com.chess.data.Location;
 import com.chess.data.PieceValue;
 import com.chess.data.Pin;
 import com.chess.data.Player;
+import com.chess.data.Rule;
 import com.chess.data.Square;
 
 import java.util.Random;
@@ -51,6 +52,8 @@ public class Position implements IPiece, ISearch, IMove {
 
 	private final Square square = new Square();
 	private final Book book = new Book();
+
+	private final Rule rule = new Rule();
 
 	private final Player player;
 
@@ -89,11 +92,9 @@ public class Position implements IPiece, ISearch, IMove {
 	public static Random random = new Random();
 
 	public int vlWhite, vlBlack;
-	public int moveNum, distance;
+	public int distance;
 
-	public int[] mvList = new int[MAX_MOVE_NUM];
-	public int[] pcList = new int[MAX_MOVE_NUM];
-	public boolean[] chkList = new boolean[MAX_MOVE_NUM];
+	private int moveNum;
 
 	public void clearBoard() {
 		player.clear();
@@ -103,8 +104,7 @@ public class Position implements IPiece, ISearch, IMove {
 	}
 
 	public void setIrrev() {
-		mvList[0] = pcList[0] = 0;
-		chkList[0] = checked();
+		rule.set(0, checked());
 		moveNum = 1;
 		distance = 0;
 	}
@@ -137,11 +137,11 @@ public class Position implements IPiece, ISearch, IMove {
 	}
 
 	public void movePiece() {
-		final int mv = mvList[moveNum];
+		final int mv = rule.getMove(moveNum);
 		int sqSrc = Board.SRC(mv);
 		int sqDst = Board.DST(mv);
 		final int piece = getPc(sqDst);
-		pcList[moveNum] = piece;
+		rule.setPc(moveNum, piece);
 		if (piece > 0) {
 			delPiece(sqDst, piece);
 		}
@@ -151,13 +151,13 @@ public class Position implements IPiece, ISearch, IMove {
 	}
 
 	public void undoMovePiece() {
-		final int mv = mvList[moveNum];
+		final int mv = rule.getMove(moveNum);
 		int sqSrc = Board.SRC(mv);
 		int sqDst = Board.DST(mv);
 		int pc = getPc(sqDst);
 		delPiece(sqDst, pc);
 		addPiece(sqSrc, pc);
-		final int piece = pcList[moveNum];
+		final int piece = rule.getPc(moveNum);
 		if (piece > 0) {
 			addPiece(sqDst, piece);
 		}
@@ -170,14 +170,14 @@ public class Position implements IPiece, ISearch, IMove {
 
 	public boolean makeMove(int mv) {
 		book.setKey(moveNum);
-		mvList[moveNum] = mv;
+		rule.setMove(moveNum, mv);
 		movePiece();
 		if (checked()) {
 			undoMovePiece();
 			return false;
 		}
 		changeSide();
-		chkList[moveNum] = checked();
+		rule.setCheck(moveNum, checked());
 		moveNum ++;
 		distance ++;
 		return true;
@@ -193,8 +193,7 @@ public class Position implements IPiece, ISearch, IMove {
 	public void nullMove() {
 		book.setKey(moveNum);
 		changeSide();
-		mvList[moveNum] = pcList[moveNum] = 0;
-		chkList[moveNum] = false;
+		rule.set(moveNum, false);
 		moveNum ++;
 		distance ++;
 	}
@@ -640,11 +639,11 @@ public class Position implements IPiece, ISearch, IMove {
 	}
 
 	public boolean inCheck() {
-		return chkList[moveNum - 1];
+		return rule.isCheck(moveNum - 1);
 	}
 
 	public boolean captured() {
-		return pcList[moveNum - 1] > 0;
+		return rule.checkPc(moveNum - 1);
 	}
 
 	public int repValue(int vlRep) {
@@ -662,9 +661,9 @@ public class Position implements IPiece, ISearch, IMove {
 		boolean perpCheck = true;
 		boolean oppPerpCheck = true;
 		int index = moveNum - 1;
-		while (mvList[index] > 0 && pcList[index] == 0) {
+		while (rule.checkMoving(index)) {
 			if (selfSide) {
-				perpCheck = perpCheck && chkList[index];
+				perpCheck = rule.isCheck(index, perpCheck);
 				if (book.checkKey(index)) {
 					recur --;
 					if (recur == 0) {
@@ -672,7 +671,7 @@ public class Position implements IPiece, ISearch, IMove {
 					}
 				}
 			} else {
-				oppPerpCheck = oppPerpCheck && chkList[index];
+				oppPerpCheck = rule.isCheck(index, oppPerpCheck);
 			}
 			selfSide = !selfSide;
 			index --;
@@ -762,5 +761,9 @@ public class Position implements IPiece, ISearch, IMove {
 
 	public int getZobristLock() {
 		return book.zobristLock;
+	}
+
+	public boolean isMoveLimit() {
+		return moveNum > 100;
 	}
 }

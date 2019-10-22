@@ -259,7 +259,7 @@ public class GameLogic implements IResponse {
             showMessage(msgProvider.getLongTimeMessage(vlRep));
             return true;
         }
-        if (pos.moveNum > 100) {
+        if (pos.isMoveLimit()) {
             playSound(RESP_DRAW);
             showMessage(msgProvider.getDrawMessage());
             return true;
