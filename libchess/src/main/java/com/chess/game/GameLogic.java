@@ -7,19 +7,7 @@ import com.chess.xqwlight.Search;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-import static com.chess.game.GameConfig.RESP_CAPTURE;
-import static com.chess.game.GameConfig.RESP_CAPTURE2;
-import static com.chess.game.GameConfig.RESP_CHECK;
-import static com.chess.game.GameConfig.RESP_CHECK2;
-import static com.chess.game.GameConfig.RESP_CLICK;
-import static com.chess.game.GameConfig.RESP_DRAW;
-import static com.chess.game.GameConfig.RESP_ILLEGAL;
-import static com.chess.game.GameConfig.RESP_LOSS;
-import static com.chess.game.GameConfig.RESP_MOVE;
-import static com.chess.game.GameConfig.RESP_MOVE2;
-import static com.chess.game.GameConfig.RESP_WIN;
-
-public class GameLogic {
+public class GameLogic implements IResponse {
     private final IMsgProvider msgProvider;
     private final IGameView mGameView;
 
@@ -28,6 +16,7 @@ public class GameLogic {
     private volatile boolean thinking = false;
     private boolean flipped = false;
     private int level = 0;
+
     private Position pos = new Position();
     private Search search = new Search(pos, 16);
     private Deque<String> mHistoryList = new ArrayDeque<>();
