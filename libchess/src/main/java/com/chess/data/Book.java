@@ -5,7 +5,7 @@ import com.chess.xqwlight.Util;
 
 import java.io.InputStream;
 
-public class Book {
+public class Book implements IMove {
     private static final int MAX_BOOK_SIZE = 16384;
 
     private static int PreGen_zobristKeyPlayer;
@@ -22,6 +22,8 @@ public class Book {
 
     public int zobristKey;
     public int zobristLock;
+
+    private int[] keyList = new int[MAX_MOVE_NUM];
 
     public static boolean loadBook(InputStream in) {
         if (bookLoadOk) {
@@ -101,5 +103,13 @@ public class Book {
 
     public int getValue(int index) {
         return bookValue[index];
+    }
+
+    public void setKey(int index) {
+        keyList[index] = zobristKey;
+    }
+
+    public boolean checkKey(int index) {
+        return keyList[index] == zobristKey;
     }
 }

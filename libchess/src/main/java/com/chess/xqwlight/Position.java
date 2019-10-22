@@ -25,6 +25,7 @@ import com.chess.data.AbstractArea;
 import com.chess.data.Board;
 import com.chess.data.Book;
 import com.chess.data.Fort;
+import com.chess.data.IMove;
 import com.chess.data.IPiece;
 import com.chess.data.ISearch;
 import com.chess.data.LegalSpan;
@@ -36,13 +37,11 @@ import com.chess.data.Square;
 
 import java.util.Random;
 
-public class Position implements IPiece, ISearch {
+public class Position implements IPiece, ISearch, IMove {
 	public static final int NULL_SAFE_MARGIN = 400;
 	public static final int NULL_OKAY_MARGIN = 200;
 	public static final int DRAW_VALUE = 20;
 	public static final int ADVANCED_VALUE = 3;
-
-	public static final int MAX_MOVE_NUM = 256;
 
 	private final AbstractArea board = new Board();
 	private final AbstractArea fort = new Fort();
@@ -94,7 +93,6 @@ public class Position implements IPiece, ISearch {
 
 	public int[] mvList = new int[MAX_MOVE_NUM];
 	public int[] pcList = new int[MAX_MOVE_NUM];
-	public int[] keyList = new int[MAX_MOVE_NUM];
 	public boolean[] chkList = new boolean[MAX_MOVE_NUM];
 
 	public void clearBoard() {
@@ -139,11 +137,13 @@ public class Position implements IPiece, ISearch {
 	}
 
 	public void movePiece() {
-		int sqSrc = Board.SRC(mvList[moveNum]);
-		int sqDst = Board.DST(mvList[moveNum]);
-		pcList[moveNum] = getPc(sqDst);
-		if (pcList[moveNum] > 0) {
-			delPiece(sqDst, pcList[moveNum]);
+		final int mv = mvList[moveNum];
+		int sqSrc = Board.SRC(mv);
+		int sqDst = Board.DST(mv);
+		final int piece = getPc(sqDst);
+		pcList[moveNum] = piece;
+		if (piece > 0) {
+			delPiece(sqDst, piece);
 		}
 		int pc = getPc(sqSrc);
 		delPiece(sqSrc, pc);
@@ -151,13 +151,15 @@ public class Position implements IPiece, ISearch {
 	}
 
 	public void undoMovePiece() {
-		int sqSrc = Board.SRC(mvList[moveNum]);
-		int sqDst = Board.DST(mvList[moveNum]);
+		final int mv = mvList[moveNum];
+		int sqSrc = Board.SRC(mv);
+		int sqDst = Board.DST(mv);
 		int pc = getPc(sqDst);
 		delPiece(sqDst, pc);
 		addPiece(sqSrc, pc);
-		if (pcList[moveNum] > 0) {
-			addPiece(sqDst, pcList[moveNum]);
+		final int piece = pcList[moveNum];
+		if (piece > 0) {
+			addPiece(sqDst, piece);
 		}
 	}
 
@@ -167,7 +169,7 @@ public class Position implements IPiece, ISearch {
 	}
 
 	public boolean makeMove(int mv) {
-		keyList[moveNum] = book.zobristKey;
+		book.setKey(moveNum);
 		mvList[moveNum] = mv;
 		movePiece();
 		if (checked()) {
@@ -189,7 +191,7 @@ public class Position implements IPiece, ISearch {
 	}
 
 	public void nullMove() {
-		keyList[moveNum] = book.zobristKey;
+		book.setKey(moveNum);
 		changeSide();
 		mvList[moveNum] = pcList[moveNum] = 0;
 		chkList[moveNum] = false;
@@ -663,7 +665,7 @@ public class Position implements IPiece, ISearch {
 		while (mvList[index] > 0 && pcList[index] == 0) {
 			if (selfSide) {
 				perpCheck = perpCheck && chkList[index];
-				if (keyList[index] == book.zobristKey) {
+				if (book.checkKey(index)) {
 					recur --;
 					if (recur == 0) {
 						return 1 + (perpCheck ? 2 : 0) + (oppPerpCheck ? 4 : 0);
