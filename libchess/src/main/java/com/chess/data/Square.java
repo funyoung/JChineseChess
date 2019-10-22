@@ -1,18 +1,16 @@
 package com.chess.data;
 
-import com.chess.xqwlight.Position;
-
 public class Square {
     private final byte[] squares = new byte[256];
 
     public void clear() {
-        for (int sq = 0; sq < squares.length; sq ++) {
+        for (int sq = 0; sq < length(); sq ++) {
             clear(sq);
         }
     }
 
     public void clear(int sq) {
-        squares[sq] = 0;
+        set(sq, 0);
     }
 
     public void set(int sq, int pc) {
@@ -27,15 +25,7 @@ public class Square {
         return get(sq) == 0;
     }
 
-    /*
-    todo: to decouple the dependency of Position
-     */
-    public void mirror(Position pos) {
-        for (int sq = 0; sq < squares.length; sq ++) {
-            int pc = squares[sq];
-            if (pc > 0) {
-                pos.addPiece(Board.MIRROR_SQUARE(sq), pc);
-            }
-        }
+    public int length() {
+        return squares.length;
     }
 }

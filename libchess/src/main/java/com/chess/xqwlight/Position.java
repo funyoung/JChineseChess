@@ -21,47 +21,29 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 package com.chess.xqwlight;
 
-import com.chess.data.AbstractArea;
 import com.chess.data.Board;
 import com.chess.data.Book;
-import com.chess.data.Fort;
-import com.chess.data.IMove;
-import com.chess.data.IPiece;
 import com.chess.data.ISearch;
-import com.chess.data.LegalSpan;
 import com.chess.data.Location;
 import com.chess.data.PieceValue;
-import com.chess.data.Pin;
 import com.chess.data.Player;
 import com.chess.data.Rule;
-import com.chess.data.Square;
 
 import java.util.Random;
 
-public class Position implements IPiece, ISearch, IMove {
+public class Position implements ISearch {
 	public static final int NULL_SAFE_MARGIN = 400;
 	public static final int NULL_OKAY_MARGIN = 200;
 	public static final int DRAW_VALUE = 20;
 	public static final int ADVANCED_VALUE = 3;
 
-	private final AbstractArea board = new Board();
-	private final AbstractArea fort = new Fort();
-	private final LegalSpan legalSpan = new LegalSpan();
-	private final Pin pin = new Pin();
 	private final PieceValue pieceValue = new PieceValue();
 
-	private final Square square = new Square();
 	private final Book book = new Book();
 
 	private final Rule rule = new Rule();
 
 	private final Player player;
-
-	protected static final int[] KING_DELTA = {-16, -1, 1, 16};
-	protected static final int[] ADVISOR_DELTA = {-17, -15, 15, 17};
-	protected static final int[][] KNIGHT_DELTA = {{-33, -31}, {-18, 14}, {-14, 18}, {31, 33}};
-	protected static final int[][] KNIGHT_CHECK_DELTA = {{-33, -18}, {-31, -14}, {14, 31}, {18, 33}};
-	protected static final int[] MVV_VALUE = {50, 10, 10, 30, 40, 30, 20, 0};
 
 	public Position(Player player) {
 		this.player = player;
@@ -69,22 +51,6 @@ public class Position implements IPiece, ISearch, IMove {
 
 	public static int SQUARE_FLIP(int sq) {
 		return 254 - sq;
-	}
-
-	public static boolean SAME_HALF(int sqSrc, int sqDst) {
-		return ((sqSrc ^ sqDst) & 0x80) == 0;
-	}
-
-	public static boolean SAME_RANK(int sqSrc, int sqDst) {
-		return ((sqSrc ^ sqDst) & 0xf0) == 0;
-	}
-
-	public static boolean SAME_FILE(int sqSrc, int sqDst) {
-		return ((sqSrc ^ sqDst) & 0x0f) == 0;
-	}
-
-	public static int MVV_LVA(int pc, int lva) {
-		return MVV_VALUE[pc & 7] - lva;
 	}
 
 	public static final String FEN_PIECE = "        KABNRCP kabnrcp ";
@@ -98,25 +64,20 @@ public class Position implements IPiece, ISearch, IMove {
 
 	public void clearBoard() {
 		player.clear();
-		square.clear();
 		book.clear();
 		vlWhite = vlBlack = 0;
 	}
 
 	public void setIrrev() {
-		rule.set(0, checked());
+		rule.set(0, player.checked());
 		moveNum = 1;
 		distance = 0;
 	}
 
 	public void addPiece(int sq, int pc, boolean del) {
-		int pcAdjust;
-		if (del) {
-		    square.clear(sq);
-        } else {
-		    square.set(sq, pc);
-        }
+		player.addPiece(sq, pc, del);
 
+		int pcAdjust;
 		if (pc < 16) {
 			pcAdjust = pc - 8;
 			vlWhite += pieceValue.getValue(pcAdjust, sq, del);
@@ -157,7 +118,7 @@ public class Position implements IPiece, ISearch, IMove {
 		int pc = getPc(sqDst);
 		delPiece(sqDst, pc);
 		addPiece(sqSrc, pc);
-		final int piece = rule.getPc(moveNum);
+		final int piece = rule.queryPc(moveNum);
 		if (piece > 0) {
 			addPiece(sqDst, piece);
 		}
@@ -172,12 +133,12 @@ public class Position implements IPiece, ISearch, IMove {
 		book.setKey(moveNum);
 		rule.setMove(moveNum, mv);
 		movePiece();
-		if (checked()) {
+		if (player.checked()) {
 			undoMovePiece();
 			return false;
 		}
 		changeSide();
-		rule.setCheck(moveNum, checked());
+		rule.setCheck(moveNum, player.checked());
 		moveNum ++;
 		distance ++;
 		return true;
@@ -293,312 +254,7 @@ public class Position implements IPiece, ISearch, IMove {
 	}
 
 	public int generateAllMoves(int[] mvs) {
-		return generateMoves(mvs, null);
-	}
-
-	public int generateMoves(int[] mvs, int[] vls) {
-		int moves = 0;
-		int pcSelfSide = player.sideTag();
-		int pcOppSide = player.oppSideTag();
-		for (int sqSrc = 0; sqSrc < 256; sqSrc ++) {
-			int pcSrc = getPc(sqSrc);
-			if ((pcSrc & pcSelfSide) == 0) {
-				continue;
-			}
-			switch (pcSrc - pcSelfSide) {
-			case PIECE_KING:
-				for (int i = 0; i < 4; i ++) {
-					int sqDst = sqSrc + KING_DELTA[i];
-					if (!fort.contains(sqDst)) {
-						continue;
-					}
-					int pcDst = getPc(sqDst);
-					if (vls == null) {
-						if ((pcDst & pcSelfSide) == 0) {
-							mvs[moves] = Board.MOVE(sqSrc, sqDst);
-							moves ++;
-						}
-					} else if ((pcDst & pcOppSide) != 0) {
-						mvs[moves] = Board.MOVE(sqSrc, sqDst);
-						vls[moves] = MVV_LVA(pcDst, 5);
-						moves ++;
-					}
-				}
-				break;
-			case PIECE_ADVISOR:
-				for (int i = 0; i < 4; i ++) {
-					int sqDst = sqSrc + ADVISOR_DELTA[i];
-					if (!fort.contains(sqDst)) {
-						continue;
-					}
-					int pcDst = getPc(sqDst);
-					if (vls == null) {
-						if ((pcDst & pcSelfSide) == 0) {
-							mvs[moves] = Board.MOVE(sqSrc, sqDst);
-							moves ++;
-						}
-					} else if ((pcDst & pcOppSide) != 0) {
-						mvs[moves] = Board.MOVE(sqSrc, sqDst);
-						vls[moves] = MVV_LVA(pcDst, 1);
-						moves ++;
-					}
-				}
-				break;
-			case PIECE_BISHOP:
-				for (int i = 0; i < 4; i ++) {
-					int sqDst = sqSrc + ADVISOR_DELTA[i];
-					if (!(board.contains(sqDst) && player.isHomeHalf(sqDst) && square.isEmpty(sqDst))) {
-						continue;
-					}
-					sqDst += ADVISOR_DELTA[i];
-					int pcDst = getPc(sqDst);
-					if (vls == null) {
-						if ((pcDst & pcSelfSide) == 0) {
-							mvs[moves] = Board.MOVE(sqSrc, sqDst);
-							moves ++;
-						}
-					} else if ((pcDst & pcOppSide) != 0) {
-						mvs[moves] = Board.MOVE(sqSrc, sqDst);
-						vls[moves] = MVV_LVA(pcDst, 1);
-						moves ++;
-					}
-				}
-				break;
-			case PIECE_KNIGHT:
-				for (int i = 0; i < 4; i ++) {
-					int sqDst = sqSrc + KING_DELTA[i];
-					if (getPc(sqDst) > 0) {
-						continue;
-					}
-					for (int j = 0; j < 2; j ++) {
-						sqDst = sqSrc + KNIGHT_DELTA[i][j];
-						if (!board.contains(sqDst)) {
-							continue;
-						}
-						int pcDst = getPc(sqDst);
-						if (vls == null) {
-							if ((pcDst & pcSelfSide) == 0) {
-								mvs[moves] = Board.MOVE(sqSrc, sqDst);
-								moves ++;
-							}
-						} else if ((pcDst & pcOppSide) != 0) {
-							mvs[moves] = Board.MOVE(sqSrc, sqDst);
-							vls[moves] = MVV_LVA(pcDst, 1);
-							moves ++;
-						}
-					}
-				}
-				break;
-			case PIECE_ROOK:
-				for (int i = 0; i < 4; i ++) {
-					int delta = KING_DELTA[i];
-					int sqDst = sqSrc + delta;
-					while (board.contains(sqDst)) {
-						int pcDst = getPc(sqDst);
-						if (pcDst == 0) {
-							if (vls == null) {
-								mvs[moves] = Board.MOVE(sqSrc, sqDst);
-								moves ++;
-							}
-						} else {
-							if ((pcDst & pcOppSide) != 0) {
-								mvs[moves] = Board.MOVE(sqSrc, sqDst);
-								if (vls != null) {
-									vls[moves] = MVV_LVA(pcDst, 4);
-								}
-								moves ++;
-							}
-							break;
-						}
-						sqDst += delta;
-					}
-				}
-				break;
-			case PIECE_CANNON:
-				for (int i = 0; i < 4; i ++) {
-					int delta = KING_DELTA[i];
-					int sqDst = sqSrc + delta;
-					while (board.contains(sqDst)) {
-						if (square.isEmpty(sqDst)) {
-							if (vls == null) {
-								mvs[moves] = Board.MOVE(sqSrc, sqDst);
-								moves ++;
-							}
-						} else {
-							break;
-						}
-						sqDst += delta;
-					}
-					sqDst += delta;
-					while (board.contains(sqDst)) {
-						int pcDst = getPc(sqDst);
-						if (pcDst > 0) {
-							if ((pcDst & pcOppSide) != 0) {
-								mvs[moves] = Board.MOVE(sqSrc, sqDst);
-								if (vls != null) {
-									vls[moves] = MVV_LVA(pcDst, 4);
-								}
-								moves ++;
-							}
-							break;
-						}
-						sqDst += delta;
-					}
-				}
-				break;
-			case PIECE_PAWN:
-				int sqDst = player.squareForward(sqSrc);
-				if (board.contains(sqDst)) {
-					int pcDst = getPc(sqDst);
-					if (vls == null) {
-						if ((pcDst & pcSelfSide) == 0) {
-							mvs[moves] = Board.MOVE(sqSrc, sqDst);
-							moves ++;
-						}
-					} else if ((pcDst & pcOppSide) != 0) {
-						mvs[moves] = Board.MOVE(sqSrc, sqDst);
-						vls[moves] = MVV_LVA(pcDst, 2);
-						moves ++;
-					}
-				}
-				if (player.awayHalf(sqSrc)) {
-					for (int delta = -1; delta <= 1; delta += 2) {
-						sqDst = sqSrc + delta;
-						if (board.contains(sqDst)) {
-							int pcDst = getPc(sqDst);
-							if (vls == null) {
-								if ((pcDst & pcSelfSide) == 0) {
-									mvs[moves] = Board.MOVE(sqSrc, sqDst);
-									moves ++;
-								}
-							} else if ((pcDst & pcOppSide) != 0) {
-								mvs[moves] = Board.MOVE(sqSrc, sqDst);
-								vls[moves] = MVV_LVA(pcDst, 2);
-								moves ++;
-							}
-						}
-					}
-				}
-				break;
-			}
-		}
-		return moves;
-	}
-
-	public boolean legalMove(int mv) {
-		int sqSrc = Board.SRC(mv);
-		int pcSrc = getPc(sqSrc);
-		int pcSelfSide = player.sideTag();
-		if ((pcSrc & pcSelfSide) == 0) {
-			return false;
-		}
-
-		int sqDst = Board.DST(mv);
-		int pcDst = getPc(sqDst);
-		if ((pcDst & pcSelfSide) != 0) {
-			return false;
-		}
-
-		switch (pcSrc - pcSelfSide) {
-		case PIECE_KING:
-			return fort.contains(sqDst) && legalSpan.isKingSpan(sqSrc, sqDst);
-		case PIECE_ADVISOR:
-			return fort.contains(sqDst) && legalSpan.isAdviserSpan(sqSrc, sqDst);
-		case PIECE_BISHOP:
-			return SAME_HALF(sqSrc, sqDst) && legalSpan.isBishopSpan(sqSrc, sqDst) &&
-					square.isEmpty(pin.getBishopPin(sqSrc, sqDst));
-		case PIECE_KNIGHT:
-			int sqPin = pin.getKnightPin(sqSrc, sqDst);
-			return sqPin != sqSrc && square.isEmpty(sqPin);
-		case PIECE_ROOK:
-		case PIECE_CANNON:
-			int delta;
-			if (SAME_RANK(sqSrc, sqDst)) {
-				delta = (sqDst < sqSrc ? -1 : 1);
-			} else if (SAME_FILE(sqSrc, sqDst)) {
-				delta = (sqDst < sqSrc ? -16 : 16);
-			} else {
-				return false;
-			}
-			sqPin = sqSrc + delta;
-			while (sqPin != sqDst && square.isEmpty(sqPin)) {
-				sqPin += delta;
-			}
-			if (sqPin == sqDst) {
-				return pcDst == 0 || pcSrc - pcSelfSide == PIECE_ROOK;
-			}
-			if (pcDst == 0 || pcSrc - pcSelfSide == PIECE_ROOK) {
-				return false;
-			}
-			sqPin += delta;
-			while (sqPin != sqDst && square.isEmpty(sqPin)) {
-				sqPin += delta;
-			}
-			return sqPin == sqDst;
-		case PIECE_PAWN:
-			if (player.awayHalf(sqDst) && (sqDst == sqSrc - 1 || sqDst == sqSrc + 1)) {
-				return true;
-			}
-			return sqDst == player.squareForward(sqSrc);
-		default:
-			return false;
-		}
-	}
-
-	public boolean checked() {
-		int pcSelfSide = player.sideTag();
-		int pcOppSide = player.oppSideTag();
-		for (int sqSrc = 0; sqSrc < 256; sqSrc ++) {
-			if (getPc(sqSrc) != pcSelfSide + PIECE_KING) {
-				continue;
-			}
-			if (getPc(player.squareForward(sqSrc)) == pcOppSide + PIECE_PAWN) {
-				return true;
-			}
-			for (int delta = -1; delta <= 1; delta += 2) {
-				if (getPc(sqSrc + delta) == pcOppSide + PIECE_PAWN) {
-					return true;
-				}
-			}
-			for (int i = 0; i < 4; i ++) {
-				if (!square.isEmpty(sqSrc + ADVISOR_DELTA[i])) {
-					continue;
-				}
-				for (int j = 0; j < 2; j ++) {
-					int pcDst = getPc(sqSrc + KNIGHT_CHECK_DELTA[i][j]);
-					if (pcDst == pcOppSide + PIECE_KNIGHT) {
-						return true;
-					}
-				}
-			}
-			for (int i = 0; i < 4; i ++) {
-				int delta = KING_DELTA[i];
-				int sqDst = sqSrc + delta;
-				while (board.contains(sqDst)) {
-					int pcDst = getPc(sqDst);
-					if (pcDst > 0) {
-						if (pcDst == pcOppSide + PIECE_ROOK || pcDst == pcOppSide + PIECE_KING) {
-							return true;
-						}
-						break;
-					}
-					sqDst += delta;
-				}
-				sqDst += delta;
-				while (board.contains(sqDst)) {
-					int pcDst = getPc(sqDst);
-					if (pcDst > 0) {
-						if (pcDst == pcOppSide + PIECE_CANNON) {
-							return true;
-						}
-						break;
-					}
-					sqDst += delta;
-				}
-			}
-			return false;
-		}
-		return false;
+		return player.generateMoves(mvs, null);
 	}
 
 	public boolean isMate() {
@@ -679,18 +335,7 @@ public class Position implements IPiece, ISearch, IMove {
 		return 0;
 	}
 
-	public Position mirror() {
-		Position pos = new Position(new Player());
-		pos.clearBoard();
-		square.mirror(pos);
-
-		if (player.isComputer()) {
-			pos.changeSide();
-		}
-		return pos;
-	}
-
-	private int getUnSignedLock() {
+	public int getUnSignedLock() {
 		return book.getUnSignedLock();
 	}
 
@@ -704,7 +349,7 @@ public class Position implements IPiece, ISearch, IMove {
 		int index = book.binarySearch(lock);
 		if (index < 0) {
 			mirror = true;
-			lock = mirror().getUnSignedLock(); // Convert into Unsigned
+			lock = player.getMirrorLock(); // Convert into Unsigned
 			index = book.binarySearch(lock);
 		}
 
@@ -723,7 +368,7 @@ public class Position implements IPiece, ISearch, IMove {
 		while (book.checkUpperLock(index, lock)) {
 			int mv = book.getMove(index);
 			mv = (mirror ? Board.MIRROR_MOVE(mv) : mv);
-			if (legalMove(mv)) {
+			if (player.legalMove(mv)) {
 				mvs[moves] = mv;
 				vls[moves] = book.getValue(index);
 				value += vls[moves];
@@ -751,10 +396,6 @@ public class Position implements IPiece, ISearch, IMove {
 		return ((getPc(Board.SRC(mv)) - 8) << 8) + Board.DST(mv);
 	}
 
-	public int getPc(int sq) {
-	    return square.get(sq);
-    }
-
 	public int getZobristKey() {
 		return book.zobristKey;
 	}
@@ -765,5 +406,9 @@ public class Position implements IPiece, ISearch, IMove {
 
 	public boolean isMoveLimit() {
 		return moveNum > 100;
+	}
+
+	private int getPc(int sq) {
+		return player.getPc(sq);
 	}
 }

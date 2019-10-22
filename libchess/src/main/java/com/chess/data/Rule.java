@@ -22,16 +22,16 @@ public class Rule implements IMove {
         pcList[index] = piece;
     }
 
-    public int getPc(int index) {
+    public int queryPc(int index) {
         return pcList[index];
     }
 
     public boolean checkPc(int index) {
-        return getPc(index) > 0;
+        return queryPc(index) > 0;
     }
 
     public boolean checkMoving(int index) {
-        return getMove(index) > 0 && getPc(index) == 0;
+        return getMove(index) > 0 && queryPc(index) == 0;
     }
 
     public void setCheck(int index, boolean checked) {

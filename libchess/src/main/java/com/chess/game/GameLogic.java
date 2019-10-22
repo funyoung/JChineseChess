@@ -50,7 +50,7 @@ public class GameLogic implements IResponse {
                 sq = (flipped ? Position.SQUARE_FLIP(sq) : sq);
                 int xx = Board.x(x);
                 int yy = Board.y(y);
-                int pc = pos.getPc(sq);
+                int pc = player.getPc(sq);
                 if (pc > 0) {
                     float left = xx * mCellWidth;
                     float top = yy * mCellWidth;
@@ -147,7 +147,7 @@ public class GameLogic implements IResponse {
         int yy = (int) (y / mCellWidth);
         int sq_ = Board.xyOffset(xx, yy);
         int sq = (flipped ? Position.SQUARE_FLIP(sq_) : sq_);
-        if (player.isComputerSide(pos.getPc(sq))) {
+        if (player.isComputerSide(sq)) {
             if (sqSelected > 0) {
                 drawSquare(sqSelected);
             }
@@ -161,7 +161,7 @@ public class GameLogic implements IResponse {
             mGameView.postRepaint();
         } else if (sqSelected > 0) {
             int mv = Board.MOVE(sqSelected, sq);
-            if (!pos.legalMove(mv)) {
+            if (!player.legalMove(mv)) {
                 return;
             }
             if (!pos.makeMove(mv)) {

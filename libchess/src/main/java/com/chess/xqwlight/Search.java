@@ -167,13 +167,13 @@ public class Search implements ISearch {
             }
             if (phase == PHASE_KILLER_1) {
                 phase = PHASE_KILLER_2;
-                if (mvKiller1 != mvHash && mvKiller1 > 0 && pos.legalMove(mvKiller1)) {
+                if (mvKiller1 != mvHash && mvKiller1 > 0 && player.legalMove(mvKiller1)) {
                     return mvKiller1;
                 }
             }
             if (phase == PHASE_KILLER_2) {
                 phase = PHASE_GEN_MOVES;
-                if (mvKiller2 != mvHash && mvKiller2 > 0 && pos.legalMove(mvKiller2)) {
+                if (mvKiller2 != mvHash && mvKiller2 > 0 && player.legalMove(mvKiller2)) {
                     return mvKiller2;
                 }
             }
@@ -242,7 +242,7 @@ public class Search implements ISearch {
                 vlAlpha = Math.max(vl, vlAlpha);
             }
             int[] vls = new int[MAX_GEN_MOVES];
-            genMoves = pos.generateMoves(mvs, vls);
+            genMoves = player.generateMoves(mvs, vls);
             Util.shellSort(mvs, vls, 0, genMoves);
             for (int i = 0; i < genMoves; i++) {
                 if (vls[i] < 10 || (vls[i] < 20 && player.isHomeHalf(Board.DST(mvs[i])))) {
