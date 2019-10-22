@@ -23,6 +23,7 @@ package com.chess.xqwlight;
 
 import com.chess.data.Board;
 import com.chess.data.ISearch;
+import com.chess.data.Player;
 
 public class Search implements ISearch {
     private static final int HASH_ALPHA = 1;
@@ -34,12 +35,15 @@ public class Search implements ISearch {
 
     private int hashMask, mvResult, allNodes, allMillis;
     private HashItem[] hashTable;
-    Position pos;
+    private final Position pos;
+    private final Player player;
     int[] historyTable = new int[4096];
     int[][] mvKiller = new int[LIMIT_DEPTH][2];
 
-    public Search(Position pos, int hashLevel) {
+    public Search(Position pos, Player player, int hashLevel) {
         this.pos = pos;
+        this.player = player;
+
         hashMask = (1 << hashLevel) - 1;
         hashTable = new HashItem[hashMask + 1];
         for (int i = 0; i <= hashMask; i++) {
@@ -241,7 +245,7 @@ public class Search implements ISearch {
             genMoves = pos.generateMoves(mvs, vls);
             Util.shellSort(mvs, vls, 0, genMoves);
             for (int i = 0; i < genMoves; i++) {
-                if (vls[i] < 10 || (vls[i] < 20 && Position.HOME_HALF(Board.DST(mvs[i]), pos.sdPlayer))) {
+                if (vls[i] < 10 || (vls[i] < 20 && player.isHomeHalf(Board.DST(mvs[i])))) {
                     genMoves = i;
                     break;
                 }

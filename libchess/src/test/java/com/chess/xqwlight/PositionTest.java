@@ -1,5 +1,6 @@
 package com.chess.xqwlight;
 
+import com.chess.data.Player;
 import com.chess.data.StartUpFen;
 
 import org.junit.Before;
@@ -12,7 +13,7 @@ public class PositionTest {
 
     @Before
     public void init() {
-        pos = new Position();
+        pos = new Position(new Player());
     }
 
     private boolean fromFen_toFen_Assert(int i) {

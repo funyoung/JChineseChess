@@ -31,6 +31,7 @@ import com.chess.data.LegalSpan;
 import com.chess.data.Location;
 import com.chess.data.PieceValue;
 import com.chess.data.Pin;
+import com.chess.data.Player;
 import com.chess.data.Square;
 
 import java.util.Random;
@@ -52,26 +53,20 @@ public class Position implements IPiece, ISearch {
 	private final Square square = new Square();
 	private final Book book = new Book();
 
+	private final Player player;
+
 	protected static final int[] KING_DELTA = {-16, -1, 1, 16};
 	protected static final int[] ADVISOR_DELTA = {-17, -15, 15, 17};
 	protected static final int[][] KNIGHT_DELTA = {{-33, -31}, {-18, 14}, {-14, 18}, {31, 33}};
 	protected static final int[][] KNIGHT_CHECK_DELTA = {{-33, -18}, {-31, -14}, {14, 31}, {18, 33}};
 	protected static final int[] MVV_VALUE = {50, 10, 10, 30, 40, 30, 20, 0};
 
+	public Position(Player player) {
+		this.player = player;
+	}
+
 	public static int SQUARE_FLIP(int sq) {
 		return 254 - sq;
-	}
-
-	public static int SQUARE_FORWARD(int sq, int sd) {
-		return sq - 16 + (sd << 5);
-	}
-
-	public static boolean HOME_HALF(int sq, int sd) {
-		return (sq & 0x80) != (sd << 7);
-	}
-
-	public static boolean AWAY_HALF(int sq, int sd) {
-		return (sq & 0x80) == (sd << 7);
 	}
 
 	public static boolean SAME_HALF(int sqSrc, int sqDst) {
@@ -86,14 +81,6 @@ public class Position implements IPiece, ISearch {
 		return ((sqSrc ^ sqDst) & 0x0f) == 0;
 	}
 
-	public static int SIDE_TAG(int sd) {
-		return 8 + (sd << 3);
-	}
-
-	public static int OPP_SIDE_TAG(int sd) {
-		return 16 - (sd << 3);
-	}
-
 	public static int MVV_LVA(int pc, int lva) {
 		return MVV_VALUE[pc & 7] - lva;
 	}
@@ -102,7 +89,6 @@ public class Position implements IPiece, ISearch {
 
 	public static Random random = new Random();
 
-	public int sdPlayer;
 	public int vlWhite, vlBlack;
 	public int moveNum, distance;
 
@@ -112,7 +98,7 @@ public class Position implements IPiece, ISearch {
 	public boolean[] chkList = new boolean[MAX_MOVE_NUM];
 
 	public void clearBoard() {
-		sdPlayer = 0;
+		player.clear();
 		square.clear();
 		book.clear();
 		vlWhite = vlBlack = 0;
@@ -176,7 +162,7 @@ public class Position implements IPiece, ISearch {
 	}
 
 	public void changeSide() {
-		sdPlayer = 1 - sdPlayer;
+		player.changeSide();
 		book.changeSide();
 	}
 
@@ -272,7 +258,7 @@ public class Position implements IPiece, ISearch {
 			return;
 		}
 
-		if (sdPlayer == (fen.charAt(index) == 'b' ? 0 : 1)) {
+		if (player.isOpposite(fen.charAt(index))) {
 			changeSide();
 		}
 		setIrrev();
@@ -301,7 +287,7 @@ public class Position implements IPiece, ISearch {
 		}
 
 		fen.setCharAt(fen.length() - 1, ' ');
-		fen.append(sdPlayer == 0 ? 'w' : 'b');
+		fen.append(player.getChar());
 		return fen.toString();
 	}
 
@@ -311,8 +297,8 @@ public class Position implements IPiece, ISearch {
 
 	public int generateMoves(int[] mvs, int[] vls) {
 		int moves = 0;
-		int pcSelfSide = SIDE_TAG(sdPlayer);
-		int pcOppSide = OPP_SIDE_TAG(sdPlayer);
+		int pcSelfSide = player.sideTag();
+		int pcOppSide = player.oppSideTag();
 		for (int sqSrc = 0; sqSrc < 256; sqSrc ++) {
 			int pcSrc = getPc(sqSrc);
 			if ((pcSrc & pcSelfSide) == 0) {
@@ -360,7 +346,7 @@ public class Position implements IPiece, ISearch {
 			case PIECE_BISHOP:
 				for (int i = 0; i < 4; i ++) {
 					int sqDst = sqSrc + ADVISOR_DELTA[i];
-					if (!(board.contains(sqDst) && HOME_HALF(sqDst, sdPlayer) && square.isEmpty(sqDst))) {
+					if (!(board.contains(sqDst) && player.isHomeHalf(sqDst) && square.isEmpty(sqDst))) {
 						continue;
 					}
 					sqDst += ADVISOR_DELTA[i];
@@ -460,7 +446,7 @@ public class Position implements IPiece, ISearch {
 				}
 				break;
 			case PIECE_PAWN:
-				int sqDst = SQUARE_FORWARD(sqSrc, sdPlayer);
+				int sqDst = player.squareForward(sqSrc);
 				if (board.contains(sqDst)) {
 					int pcDst = getPc(sqDst);
 					if (vls == null) {
@@ -474,7 +460,7 @@ public class Position implements IPiece, ISearch {
 						moves ++;
 					}
 				}
-				if (AWAY_HALF(sqSrc, sdPlayer)) {
+				if (player.awayHalf(sqSrc)) {
 					for (int delta = -1; delta <= 1; delta += 2) {
 						sqDst = sqSrc + delta;
 						if (board.contains(sqDst)) {
@@ -501,7 +487,7 @@ public class Position implements IPiece, ISearch {
 	public boolean legalMove(int mv) {
 		int sqSrc = Board.SRC(mv);
 		int pcSrc = getPc(sqSrc);
-		int pcSelfSide = SIDE_TAG(sdPlayer);
+		int pcSelfSide = player.sideTag();
 		if ((pcSrc & pcSelfSide) == 0) {
 			return false;
 		}
@@ -549,23 +535,23 @@ public class Position implements IPiece, ISearch {
 			}
 			return sqPin == sqDst;
 		case PIECE_PAWN:
-			if (AWAY_HALF(sqDst, sdPlayer) && (sqDst == sqSrc - 1 || sqDst == sqSrc + 1)) {
+			if (player.awayHalf(sqDst) && (sqDst == sqSrc - 1 || sqDst == sqSrc + 1)) {
 				return true;
 			}
-			return sqDst == SQUARE_FORWARD(sqSrc, sdPlayer);
+			return sqDst == player.squareForward(sqSrc);
 		default:
 			return false;
 		}
 	}
 
 	public boolean checked() {
-		int pcSelfSide = SIDE_TAG(sdPlayer);
-		int pcOppSide = OPP_SIDE_TAG(sdPlayer);
+		int pcSelfSide = player.sideTag();
+		int pcOppSide = player.oppSideTag();
 		for (int sqSrc = 0; sqSrc < 256; sqSrc ++) {
 			if (getPc(sqSrc) != pcSelfSide + PIECE_KING) {
 				continue;
 			}
-			if (getPc(SQUARE_FORWARD(sqSrc, sdPlayer)) == pcOppSide + PIECE_PAWN) {
+			if (getPc(player.squareForward(sqSrc)) == pcOppSide + PIECE_PAWN) {
 				return true;
 			}
 			for (int delta = -1; delta <= 1; delta += 2) {
@@ -639,16 +625,16 @@ public class Position implements IPiece, ISearch {
 	}
 
 	public int evaluate() {
-		int vl = (sdPlayer == 0 ? vlWhite - vlBlack : vlBlack - vlWhite) + ADVANCED_VALUE;
+		int vl = (player.isHuman() ? vlWhite - vlBlack : vlBlack - vlWhite) + ADVANCED_VALUE;
 		return vl == drawValue() ? vl - 1 : vl;
 	}
 
 	public boolean nullOkay() {
-		return (sdPlayer == 0 ? vlWhite : vlBlack) > NULL_OKAY_MARGIN;
+		return (player.isHuman() ? vlWhite : vlBlack) > NULL_OKAY_MARGIN;
 	}
 
 	public boolean nullSafe() {
-		return (sdPlayer == 0 ? vlWhite : vlBlack) > NULL_SAFE_MARGIN;
+		return (player.isHuman() ? vlWhite : vlBlack) > NULL_SAFE_MARGIN;
 	}
 
 	public boolean inCheck() {
@@ -693,10 +679,11 @@ public class Position implements IPiece, ISearch {
 	}
 
 	public Position mirror() {
-		Position pos = new Position();
+		Position pos = new Position(new Player());
 		pos.clearBoard();
 		square.mirror(pos);
-		if (sdPlayer == 1) {
+
+		if (player.isComputer()) {
 			pos.changeSide();
 		}
 		return pos;

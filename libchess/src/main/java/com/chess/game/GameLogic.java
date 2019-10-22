@@ -1,5 +1,6 @@
 package com.chess.game;
 
+import com.chess.data.Player;
 import com.chess.data.StartUpFen;
 import com.chess.data.Board;
 import com.chess.xqwlight.Position;
@@ -17,8 +18,9 @@ public class GameLogic implements IResponse {
     private boolean flipped = false;
     private int level = 0;
 
-    private Position pos = new Position();
-    private Search search = new Search(pos, 16);
+    private Player player = new Player();
+    private Position pos = new Position(player);
+    private Search search = new Search(pos, player, 16);
     private Deque<String> mHistoryList = new ArrayDeque<>();
     private IGameCallback mGameCallback;
     private volatile boolean mDrawBoardFinish;
@@ -113,7 +115,7 @@ public class GameLogic implements IResponse {
     private void startPlay() {
         pos.fromFen(currentFen);
         sqSelected = mvLast = 0;
-        if (flipped && pos.sdPlayer == 0) {
+        if (player.isComputerFirst(flipped)) {
             thinking();
         } else {
             mGameView.postRepaint();
@@ -145,8 +147,7 @@ public class GameLogic implements IResponse {
         int yy = (int) (y / mCellWidth);
         int sq_ = Board.xyOffset(xx, yy);
         int sq = (flipped ? Position.SQUARE_FLIP(sq_) : sq_);
-        int pc = pos.getPc(sq);
-        if ((pc & Position.SIDE_TAG(pos.sdPlayer)) != 0) {
+        if (player.isComputerSide(pos.getPc(sq))) {
             if (sqSelected > 0) {
                 drawSquare(sqSelected);
             }
