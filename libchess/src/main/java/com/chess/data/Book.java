@@ -4,6 +4,9 @@ import com.chess.xqwlight.RC4;
 import com.chess.xqwlight.Util;
 
 import java.io.InputStream;
+import java.util.Random;
+
+import static com.chess.data.ISearch.MAX_GEN_MOVES;
 
 public class Book implements IMove {
     private static final int MAX_BOOK_SIZE = 16384;
@@ -24,6 +27,8 @@ public class Book implements IMove {
     public int zobristLock;
 
     private int[] keyList = new int[MAX_MOVE_NUM];
+
+    public static Random random = new Random();
 
     public static boolean loadBook(InputStream in) {
         if (bookLoadOk) {
@@ -111,5 +116,13 @@ public class Book implements IMove {
 
     public boolean checkKey(int index) {
         return keyList[index] == zobristKey;
+    }
+
+    public static int nextInt() {
+        return random.nextInt();
+    }
+
+    public static int[] generateMaxMove() {
+        return new int[MAX_GEN_MOVES];
     }
 }

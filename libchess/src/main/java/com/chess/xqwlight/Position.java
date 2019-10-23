@@ -29,8 +29,6 @@ import com.chess.data.PieceValue;
 import com.chess.data.Player;
 import com.chess.data.Rule;
 
-import java.util.Random;
-
 public class Position implements ISearch {
 	public static final int NULL_SAFE_MARGIN = 400;
 	public static final int NULL_OKAY_MARGIN = 200;
@@ -54,8 +52,6 @@ public class Position implements ISearch {
 	}
 
 	public static final String FEN_PIECE = "        KABNRCP kabnrcp ";
-
-	public static Random random = new Random();
 
 	public int vlWhite, vlBlack;
 	public int distance;
@@ -258,7 +254,7 @@ public class Position implements ISearch {
 	}
 
 	public boolean isMate() {
-		int[] mvs = new int[MAX_GEN_MOVES];
+		int[] mvs = Book.generateMaxMove();
 		int moves = generateAllMoves(mvs);
 		for (int i = 0; i < moves; i ++) {
 			if (makeMove(mvs[i])) {
@@ -360,8 +356,8 @@ public class Position implements ISearch {
 		while (book.checkLowerLock(index, lock)) {
 			index --;
 		}
-		int[] mvs = new int[MAX_GEN_MOVES];
-		int[] vls = new int[MAX_GEN_MOVES];
+		int[] mvs = Book.generateMaxMove();
+		int[] vls = Book.generateMaxMove();
 		int value = 0;
 		int moves = 0;
 		index ++;
@@ -382,7 +378,7 @@ public class Position implements ISearch {
 		if (value == 0) {
 			return 0;
 		}
-		value = Math.abs(random.nextInt()) % value;
+		value = Math.abs(book.nextInt()) % value;
 		for (index = 0; index < moves; index ++) {
 			value -= vls[index];
 			if (value < 0) {

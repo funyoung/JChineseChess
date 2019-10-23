@@ -22,6 +22,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 package com.chess.xqwlight;
 
 import com.chess.data.Board;
+import com.chess.data.Book;
 import com.chess.data.ISearch;
 import com.chess.data.Player;
 
@@ -138,10 +139,10 @@ public class Search implements ISearch {
             }
             phase = PHASE_REST;
             this.mvHash = mvKiller1 = mvKiller2 = 0;
-            mvs = new int[MAX_GEN_MOVES];
-            vls = new int[MAX_GEN_MOVES];
+            mvs = Book.generateMaxMove();
+            vls = Book.generateMaxMove();
             moves = 0;
-            int[] mvsAll = new int[MAX_GEN_MOVES];
+            int[] mvsAll = Book.generateMaxMove();
             int numAll = pos.generateAllMoves(mvsAll);
             for (int i = 0; i < numAll; i++) {
                 int mv = mvsAll[i];
@@ -179,8 +180,8 @@ public class Search implements ISearch {
             }
             if (phase == PHASE_GEN_MOVES) {
                 phase = PHASE_REST;
-                mvs = new int[MAX_GEN_MOVES];
-                vls = new int[MAX_GEN_MOVES];
+                mvs = Book.generateMaxMove();
+                vls = Book.generateMaxMove();
                 moves = pos.generateAllMoves(mvs);
                 for (int i = 0; i < moves; i++) {
                     vls[i] = historyTable[pos.historyIndex(mvs[i])];
@@ -224,10 +225,10 @@ public class Search implements ISearch {
         }
         int vlBest = -MATE_VALUE;
         int genMoves;
-        int[] mvs = new int[MAX_GEN_MOVES];
+        int[] mvs = Book.generateMaxMove();
         if (pos.inCheck()) {
             genMoves = pos.generateAllMoves(mvs);
-            int[] vls = new int[MAX_GEN_MOVES];
+            int[] vls = Book.generateMaxMove();
             for (int i = 0; i < genMoves; i++) {
                 vls[i] = historyTable[pos.historyIndex(mvs[i])];
             }
@@ -241,7 +242,7 @@ public class Search implements ISearch {
                 vlBest = vl;
                 vlAlpha = Math.max(vl, vlAlpha);
             }
-            int[] vls = new int[MAX_GEN_MOVES];
+            int[] vls = Book.generateMaxMove();
             genMoves = player.generateMoves(mvs, vls);
             Util.shellSort(mvs, vls, 0, genMoves);
             for (int i = 0; i < genMoves; i++) {
@@ -373,8 +374,8 @@ public class Search implements ISearch {
                 vlBest = vl;
                 mvResult = mv;
                 if (vlBest > -WIN_VALUE && vlBest < WIN_VALUE) {
-                    vlBest += (Position.random.nextInt() & RANDOM_MASK) -
-                            (Position.random.nextInt() & RANDOM_MASK);
+                    vlBest += (Book.nextInt() & RANDOM_MASK) -
+                            (Book.nextInt() & RANDOM_MASK);
                     vlBest = (vlBest == pos.drawValue() ? vlBest - 1 : vlBest);
                 }
             }
