@@ -113,8 +113,8 @@ public class Player implements IPiece, IDelta {
             }
             switch (pcSrc - pcSelfSide) {
                 case PIECE_KING:
-                    for (int i = 0; i < 4; i ++) {
-                        int sqDst = sqSrc + KING_DELTA[i];
+                    for (int delta : KING_DELTA) {
+                        int sqDst = sqSrc + delta;
                         if (!fort.contains(sqDst)) {
                             continue;
                         }
@@ -132,8 +132,8 @@ public class Player implements IPiece, IDelta {
                     }
                     break;
                 case PIECE_ADVISOR:
-                    for (int i = 0; i < 4; i ++) {
-                        int sqDst = sqSrc + ADVISOR_DELTA[i];
+                    for (int delta : ADVISOR_DELTA) {
+                        int sqDst = sqSrc + delta;
                         if (!fort.contains(sqDst)) {
                             continue;
                         }
@@ -151,12 +151,12 @@ public class Player implements IPiece, IDelta {
                     }
                     break;
                 case PIECE_BISHOP:
-                    for (int i = 0; i < 4; i ++) {
-                        int sqDst = sqSrc + ADVISOR_DELTA[i];
+                    for (int delta : ADVISOR_DELTA) {
+                        int sqDst = sqSrc + delta;
                         if (!(board.contains(sqDst) && isHomeHalf(sqDst) && square.isEmpty(sqDst))) {
                             continue;
                         }
-                        sqDst += ADVISOR_DELTA[i];
+                        sqDst += delta;
                         int pcDst = getPc(sqDst);
                         if (vls == null) {
                             if ((pcDst & pcSelfSide) == 0) {
@@ -196,8 +196,7 @@ public class Player implements IPiece, IDelta {
                     }
                     break;
                 case PIECE_ROOK:
-                    for (int i = 0; i < 4; i ++) {
-                        int delta = KING_DELTA[i];
+                    for (int delta : KING_DELTA) {
                         int sqDst = sqSrc + delta;
                         while (board.contains(sqDst)) {
                             int pcDst = getPc(sqDst);
@@ -221,8 +220,7 @@ public class Player implements IPiece, IDelta {
                     }
                     break;
                 case PIECE_CANNON:
-                    for (int i = 0; i < 4; i ++) {
-                        int delta = KING_DELTA[i];
+                    for (int delta : KING_DELTA) {
                         int sqDst = sqSrc + delta;
                         while (board.contains(sqDst)) {
                             if (square.isEmpty(sqDst)) {

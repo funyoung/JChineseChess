@@ -378,7 +378,7 @@ public class Position implements ISearch {
 		if (value == 0) {
 			return 0;
 		}
-		value = Math.abs(book.nextInt()) % value;
+		value = Math.abs(Book.nextInt()) % value;
 		for (index = 0; index < moves; index ++) {
 			value -= vls[index];
 			if (value < 0) {
